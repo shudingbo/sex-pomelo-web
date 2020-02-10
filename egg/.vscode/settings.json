@@ -1,0 +1,18 @@
+{
+  "search.exclude": {
+    "**/bower_components": true,
+    "**/logs":true,
+    "**/run":true,
+    "**/typings":true
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/logs":true,
+    "**/run":true,
+    "**/typings":true
+  }
+}

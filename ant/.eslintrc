@@ -1,0 +1,38 @@
+{
+  "root": true,
+
+  "extends": "standard",
+
+  "plugins": [
+    "vue",
+    "html"
+  ],
+
+  "env": {
+    "browser": true,
+    "node": true,
+    "jasmine": true,
+    "jest": true,
+    "es6": true
+  },
+
+  "parser": "vue-eslint-parser",
+  "parserOptions": {
+    "parser": "babel-eslint",
+    "allowImportExportEverywhere": true
+  },
+
+  "rules": {
+    "indent": ["error", 2],
+    "semi": ["error", "always"],
+    "eol-last": [2, "always"],
+    "linebreak-style": [0, "windows"],
+    "space-before-function-paren": ["error", "always"],
+    "vue/html-self-closing": "off",
+    "vue/require-prop-types": "off",
+    "vue/require-default-prop": "off",
+    "vue/no-reserved-keys": "off",
+    "vue/prop-name-casing": "off"
+  },
+
+}
