@@ -101,6 +101,7 @@ export default {
     },
     renderMenuItem (menu) {
       const target = menu.meta.target || null;
+      // eslint-disable-next-line no-mixed-operators
       const tag = target && 'a' || 'router-link';
       const props = { to: { name: menu.name } };
       const attrs = { href: menu.path, target: menu.meta.target };
