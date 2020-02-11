@@ -24,7 +24,12 @@ class HomeController extends Controller {
 
     const ret = await this.app.pomelo.runAction(cmd, context);
     if (ret.status === true) {
-      ctx.success = ret.data;
+      if (cmd.indexOf('monitorLog') === -1) {
+        ctx.success = ret.data;
+      } else {
+        ctx.success = ret.data.body.data;
+      }
+
     } else {
       ctx.error = { message: ret.message };
     }

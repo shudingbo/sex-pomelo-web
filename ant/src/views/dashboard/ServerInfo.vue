@@ -28,25 +28,37 @@
 </template>
 <script>
 
-// import { axios } from '@/utils/request';
+import { axios } from '@/utils/request';
 export default {
   name: 'ServerInfo',
   components: {
   },
   data () {
     return {
-      serInfo: {}
+      serInfo: {},
+      loginInfo: {}
     };
   },
   mounted () {
     this.serInfo = this.$route.query;
     this.setSexpContext(this.serInfo.serverId);
-    console.log(`context:${this.getSexpContext()}`);
-    console.log(this.serInfo);
+
+    this.getLoginInfo();
   },
   methods: {
-    selMsg (infos) {
+    async getLoginInfo () {
+      const ret = await axios({
+        url: '/pomelo',
+        method: 'get',
+        params: { cmd: `show logins`, context: this.serInfo.serverId }
+      });
 
+      console.log(ret);
+      if (ret.status === 'success') {
+
+      }
+
+      this.axiosMsg(ret);
     }
   }
 };

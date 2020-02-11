@@ -206,7 +206,6 @@ export default {
       if (savedInput.trim()) {
         this.commandsHistory.unshift(savedInput);
 
-        console.log('--- noSplit', this.noSplit, savedInput.trim());
         if (this.noSplit) {
           this.$emit('triggerCommand', savedInput.trim(), []);
         } else {

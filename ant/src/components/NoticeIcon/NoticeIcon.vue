@@ -1,10 +1,10 @@
 <template>
   <div>
     <a-drawer
-        width="600"
+        width="60%"
         placement="right"
         @close="visible=false"
-        :closable="true"
+        :closable="false"
         :visible="visible"
       >
       <vue-terminal-ui
@@ -49,12 +49,6 @@ export default {
       ASCII_LOGO
     };
   },
-  created () {
-    console.log('created');
-  },
-  mounted () {
-    console.log('mou');
-  },
   computed: {
     terminal () {
       return this.$refs['terminal-ui'];
@@ -68,35 +62,95 @@ export default {
     },
     execute (command, args) {
       console.log('-> send cmd:', command, args);
-      switch (command) {
+
+      let commandArgs = command.trim().split(/(?<!\\) /g);
+      switch (commandArgs[0]) {
+      case 'use':
+        {
+          let len = commandArgs.length;
+          if (len === 2) {
+            this.setSexpContext(commandArgs[1]);
+            this.sign = this.getSexpContext() + '$';
+            this.context = this.getSexpContext();
+          } else if (len === 1) {
+            this.sendCmd(command);
+          } else {
+            let msg = '\\color:#FF8033; Error use cmd';
+            this.terminal.$emit('write', msg);
+          }
+        } break;
+      case 'monitorLog':
+        this.sendCmd(command, (msg) => {
+          let lines = msg.split('\n');
+          for (let it of lines) {
+            let de = it.split(' ');
+            de[0] = de[0].substring(1, 20);
+            let color = this.getColor(de[1]);
+            this.terminal.$emit('write', color + de[0] + ' ' + de.slice(2).join(' '));
+          }
+        });
+        break;
       case 'clear':
         this.terminal.$emit('clearHistory');
         break;
       default:
-        axios({
-          url: '/pomelo',
-          method: 'get',
-          params: { cmd: command, context: this.context }
-        }).then((res) => {
-          console.log(res);
-          let msg = res.message;
-          if (res.status === 'success') {
-            if (res.data) {
-              try {
+        this.sendCmd(command);
+        break;
+      }
+    },
+    getColor (lv) {
+      if (lv === '[INFO]') {
+        return '\\color:#00BFFF;';
+      } else if (lv === '[WARN]') {
+        return '\\color:#FFBF00;';
+      } else if (lv === '[ERROR]') {
+        return '\\color:#FE2E2E;';
+      }
+
+      return '';
+    },
+    sendCmd (command, cb) {
+      axios({
+        url: '/pomelo',
+        method: 'get',
+        params: { cmd: command, context: this.context }
+      }).then((res) => {
+        let msg = res.message;
+        if (res.status === 'success') {
+          if (res.data) {
+            try {
+              if (typeof (res.data) === 'string') {
+                if (typeof (cb) !== 'function') {
+                  msg = '\\color:#8080FF; ' + res.data;
+                } else {
+                  msg = res.data;
+                }
+              } else if (Object.keys(res.data).length !== 0) {
                 msg = JSON.stringify(res.data, null, 1);
-                msg = '\\color:#0080FF; ' + msg;
-              } catch (e) {
-                msg = res.data;
+                if (typeof (cb) !== 'function') {
+                  msg = '\\color:#0080FF; ' + msg;
+                }
               }
+            } catch (e) {
+              msg = res.data;
             }
           }
-          msg = msg.replace(/<p>/g, '');
-          msg = msg.replace(/<\/p>/g, '\n');
+        } else {
+          if (typeof (cb) !== 'function') {
+            msg = '\\color:#FF8033; ' + msg;
+          }
+        }
+        msg = msg.replace(/<p>/g, '');
+        msg = msg.replace(/<\/p>/g, '\n');
+        if (typeof (cb) === 'function') {
+          cb(msg);
+        } else {
           this.terminal.$emit('write', msg);
-        }).catch((err) => {
-          this.terminal.$emit('write', err);
-        });
-      }
+        }
+      }).catch((err) => {
+        let msg = '\\color:#FF8033; ' + err.toString();
+        this.terminal.$emit('write', msg);
+      });
     }
   }
 };

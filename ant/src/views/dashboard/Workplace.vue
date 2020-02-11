@@ -75,7 +75,6 @@ export default {
   },
   created () {
     this.setSexpContext('all');
-    console.log(`context:${this.getSexpContext()}`);
     this.getServiceList();
   },
   mounted () {

@@ -20,6 +20,12 @@ export const asyncRouterMap = [
         meta: { title: '仪表盘', keepAlive: true, icon: bxAnaalyse, permission: [ 'dashboard' ] },
         children: [
           {
+            path: '/dashboard/workplace',
+            name: 'Workplace',
+            component: () => import('@/views/dashboard/Workplace'),
+            meta: { title: '服务器列表', keepAlive: true, permission: [ 'dashboard' ] }
+          },
+          {
             path: '/dashboard/serverinfo',
             name: 'ServerInfo',
             hidden: true,
@@ -37,12 +43,6 @@ export const asyncRouterMap = [
             path: 'https://www.baidu.com/',
             name: 'Monitor',
             meta: { title: '监控页（外部）', target: '_blank' }
-          },
-          {
-            path: '/dashboard/workplace',
-            name: 'Workplace',
-            component: () => import('@/views/dashboard/Workplace'),
-            meta: { title: '服务器列表', keepAlive: true, permission: [ 'dashboard' ] }
           }
         ]
       }
