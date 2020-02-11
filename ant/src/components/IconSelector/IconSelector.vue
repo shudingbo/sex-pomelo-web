@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import icons from './icons'
+import icons from './icons';
 
 export default {
   name: 'IconSelect',
@@ -32,32 +32,32 @@ export default {
       selectedIcon: this.value || '',
       currentTab: 'directional',
       icons
-    }
+    };
   },
   watch: {
     value (val) {
-      this.selectedIcon = val
-      this.autoSwitchTab()
+      this.selectedIcon = val;
+      this.autoSwitchTab();
     }
   },
   created () {
     if (this.value) {
-      this.autoSwitchTab()
+      this.autoSwitchTab();
     }
   },
   methods: {
     handleSelectedIcon (icon) {
-      this.selectedIcon = icon
-      this.$emit('change', icon)
+      this.selectedIcon = icon;
+      this.$emit('change', icon);
     },
     handleTabChange (activeKey) {
-      this.currentTab = activeKey
+      this.currentTab = activeKey;
     },
     autoSwitchTab () {
-      icons.some(item => item.icons.some(icon => icon === this.value) && (this.currentTab = item.key))
+      icons.some(item => item.icons.some(icon => icon === this.value) && (this.currentTab = item.key));
     }
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

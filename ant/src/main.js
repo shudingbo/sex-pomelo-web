@@ -7,6 +7,7 @@ import App from './App.vue';
 import router from './router';
 import store from './store/';
 import { VueAxios } from './utils/request';
+import { setStore, getStore, clearStore, clearAll } from './utils/storage';
 
 import bootstrap from './core/bootstrap';
 import './core/lazy_use';
@@ -32,6 +33,21 @@ Vue.prototype.axiosMsg = function (res) {
 
   this.$message[res.status](msg);
 };
+
+Vue.prototype.getStore = getStore;
+Vue.prototype.setStore = setStore;
+Vue.prototype.clearStore = clearStore;
+Vue.prototype.clearAll = clearAll;
+Vue.prototype.getSexpContext = function () {
+  let ret = getStore('sexp-cli:context');
+  return (ret === null) ? 'all' : ret;
+};
+
+Vue.prototype.setSexpContext = function (context) {
+  setStore('sexp-cli:context', context);
+};
+
+setStore('sexp-cli:context', 'all');
 
 new Vue({
   router,

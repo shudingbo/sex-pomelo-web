@@ -24,7 +24,7 @@ export default {
     data: {
       type: Array,
       default: () => {
-        return []
+        return [];
       }
     },
     scale: {
@@ -38,7 +38,7 @@ export default {
           title: '时间',
           min: 1,
           max: 22
-        }]
+        }];
       }
     },
     tooltip: {
@@ -50,13 +50,13 @@ export default {
             name: x,
             value: y
           })
-        ]
+        ];
       }
     }
   },
   data () {
     return {
-    }
+    };
   }
-}
+};
 </script>

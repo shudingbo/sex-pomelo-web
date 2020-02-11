@@ -16,9 +16,9 @@
 -->
 
 <script>
-import Avatar from 'ant-design-vue/es/avatar'
-import AvatarItem from './Item'
-import { filterEmpty } from '@/components/_util/util'
+import Avatar from 'ant-design-vue/es/avatar';
+import AvatarItem from './Item';
+import { filterEmpty } from '@/components/_util/util';
 
 export default {
   AvatarItem,
@@ -56,44 +56,44 @@ export default {
         return {
           color: '#f56a00',
           backgroundColor: '#fde3cf'
-        }
+        };
       }
     }
   },
   data () {
-    return {}
+    return {};
   },
   methods: {
     getItems (items) {
       const classString = {
         [`${this.prefixCls}-item`]: true,
         [`${this.size}`]: true
-      }
+      };
 
       if (this.maxLength > 0) {
-        items = items.slice(0, this.maxLength)
-        items.push((<Avatar size={ this.size } style={ this.excessItemsStyle }>{`+${this.maxLength}`}</Avatar>))
+        items = items.slice(0, this.maxLength);
+        items.push((<Avatar size={ this.size } style={ this.excessItemsStyle }>{`+${this.maxLength}`}</Avatar>));
       }
       const itemList = items.map((item) => (
         <li class={ classString }>{ item }</li>
-      ))
-      return itemList
+      ));
+      return itemList;
     }
   },
   render () {
-    const { prefixCls, size } = this.$props
+    const { prefixCls, size } = this.$props;
     const classString = {
       [`${prefixCls}`]: true,
       [`${size}`]: true
-    }
-    const items = filterEmpty(this.$slots.default)
-    const itemsDom = items && items.length ? <ul class={`${prefixCls}-items`}>{ this.getItems(items) }</ul> : null
+    };
+    const items = filterEmpty(this.$slots.default);
+    const itemsDom = items && items.length ? <ul class={`${prefixCls}-items`}>{ this.getItems(items) }</ul> : null;
 
     return (
       <div class={ classString }>
         { itemsDom }
       </div>
-    )
+    );
   }
-}
+};
 </script>

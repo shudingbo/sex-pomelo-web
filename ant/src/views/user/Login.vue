@@ -106,25 +106,17 @@
       </div>
     </a-form>
 
-    <two-step-captcha
-      v-if="requiredTwoStepCaptcha"
-      :visible="stepCaptchaVisible"
-      @success="stepCaptchaSuccess"
-      @cancel="stepCaptchaCancel"
-    ></two-step-captcha>
   </div>
 </template>
 
 <script>
 import md5 from 'md5';
-import TwoStepCaptcha from '@/components/tools/TwoStepCaptcha';
 import { mapActions } from 'vuex';
 import { timeFix } from '@/utils/util';
-import { getSmsCaptcha, get2step } from '@/api/login';
+import { getSmsCaptcha } from '@/api/login';
 
 export default {
   components: {
-    TwoStepCaptcha
   },
   data () {
     return {
@@ -133,7 +125,6 @@ export default {
       // login type: 0 email, 1 username, 2 telephone
       loginType: 0,
       isLoginError: false,
-      requiredTwoStepCaptcha: false,
       stepCaptchaVisible: false,
       form: this.$form.createForm(this),
       state: {
@@ -146,14 +137,6 @@ export default {
     };
   },
   created () {
-    get2step({ })
-      .then(res => {
-        this.requiredTwoStepCaptcha = res.result.stepCode;
-      })
-      .catch(() => {
-        this.requiredTwoStepCaptcha = false;
-      });
-    // this.requiredTwoStepCaptcha = true
   },
   methods: {
     ...mapActions(['Login', 'Logout']),

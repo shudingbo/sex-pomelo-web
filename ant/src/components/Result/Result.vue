@@ -23,7 +23,7 @@
 </template>
 
 <script>
-const resultEnum = ['success', 'error']
+const resultEnum = ['success', 'error'];
 
 export default {
   name: 'Result',
@@ -37,7 +37,7 @@ export default {
       type: String,
       default: resultEnum[0],
       validator (val) {
-        return (val) => resultEnum.includes(val)
+        return (val) => resultEnum.includes(val);
       }
     },
     title: {
@@ -51,10 +51,10 @@ export default {
   },
   computed: {
     localIsSuccess: function () {
-      return this.type === resultEnum[0]
+      return this.type === resultEnum[0];
     }
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

@@ -1,4 +1,4 @@
-import { axios } from '@/utils/request'
+import { axios } from '@/utils/request';
 
 const api = {
   user: '/user',
@@ -7,16 +7,16 @@ const api = {
   permission: '/permission',
   permissionNoPager: '/permission/no-pager',
   orgTree: '/org/tree'
-}
+};
 
-export default api
+export default api;
 
 export function getUserList (parameter) {
   return axios({
     url: api.user,
     method: 'get',
     params: parameter
-  })
+  });
 }
 
 export function getRoleList (parameter) {
@@ -24,7 +24,7 @@ export function getRoleList (parameter) {
     url: api.role,
     method: 'get',
     params: parameter
-  })
+  });
 }
 
 export function getServiceList (parameter) {
@@ -32,7 +32,7 @@ export function getServiceList (parameter) {
     url: api.service,
     method: 'get',
     params: parameter
-  })
+  });
 }
 
 export function getPermissions (parameter) {
@@ -40,7 +40,7 @@ export function getPermissions (parameter) {
     url: api.permissionNoPager,
     method: 'get',
     params: parameter
-  })
+  });
 }
 
 export function getOrgTree (parameter) {
@@ -48,7 +48,7 @@ export function getOrgTree (parameter) {
     url: api.orgTree,
     method: 'get',
     params: parameter
-  })
+  });
 }
 
 // id == 0 add     post
@@ -58,5 +58,5 @@ export function saveService (parameter) {
     url: api.service,
     method: parameter.id === 0 ? 'post' : 'put',
     data: parameter
-  })
+  });
 }

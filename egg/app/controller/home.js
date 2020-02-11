@@ -24,7 +24,7 @@ class HomeController extends Controller {
 
     const ret = await this.app.pomelo.runAction(cmd, context);
     if (ret.status === true) {
-      ctx.success = { info: ret.data };
+      ctx.success = ret.data;
     } else {
       ctx.error = { message: ret.message };
     }

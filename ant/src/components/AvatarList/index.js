@@ -1,4 +1,4 @@
-import AvatarList from './List'
-import './index.less'
+import AvatarList from './List';
+import './index.less';
 
-export default AvatarList
+export default AvatarList;

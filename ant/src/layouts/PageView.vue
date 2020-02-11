@@ -52,8 +52,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex'
-import PageHeader from '@/components/PageHeader'
+import { mapState } from 'vuex';
+import PageHeader from '@/components/PageHeader';
 
 export default {
   name: 'PageView',
@@ -86,7 +86,7 @@ export default {
       extraImage: '',
       search: false,
       tabs: {}
-    }
+    };
   },
   computed: {
     ...mapState({
@@ -94,32 +94,32 @@ export default {
     })
   },
   mounted () {
-    this.tabs = this.directTabs
-    this.getPageMeta()
+    this.tabs = this.directTabs;
+    this.getPageMeta();
   },
   updated () {
-    this.getPageMeta()
+    this.getPageMeta();
   },
   methods: {
     getPageMeta () {
       // eslint-disable-next-line
       this.pageTitle = (typeof(this.title) === 'string' || !this.title) ? this.title : this.$route.meta.title
 
-      const content = this.$refs.content
+      const content = this.$refs.content;
       if (content) {
         if (content.pageMeta) {
-          Object.assign(this, content.pageMeta)
+          Object.assign(this, content.pageMeta);
         } else {
-          this.description = content.description
-          this.linkList = content.linkList
-          this.extraImage = content.extraImage
-          this.search = content.search === true
-          this.tabs = content.tabs
+          this.description = content.description;
+          this.linkList = content.linkList;
+          this.extraImage = content.extraImage;
+          this.search = content.search === true;
+          this.tabs = content.tabs;
         }
       }
     }
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

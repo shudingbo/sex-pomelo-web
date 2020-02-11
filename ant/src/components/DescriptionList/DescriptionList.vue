@@ -8,7 +8,7 @@
 </template>
 
 <script>
-import { Col } from 'ant-design-vue/es/grid/'
+import { Col } from 'ant-design-vue/es/grid/';
 
 const Item = {
   name: 'DetailListItem',
@@ -30,16 +30,16 @@ const Item = {
         <div class="term">{this.$props.term}</div>
         <div class="content">{this.$slots.default}</div>
       </Col>
-    )
+    );
   }
-}
+};
 
 const responsive = {
   1: { xs: 24 },
   2: { xs: 24, sm: 12 },
   3: { xs: 24, sm: 12, md: 8 },
   4: { xs: 24, sm: 12, md: 6 }
-}
+};
 
 export default {
   name: 'DetailList',
@@ -72,9 +72,9 @@ export default {
   provide () {
     return {
       col: this.col > 4 ? 4 : this.col
-    }
+    };
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

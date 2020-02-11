@@ -1,3 +1,4 @@
+
 <template>
   <tooltip v-if="tips !== ''">
     <template slot="title">{{ tips }}</template>
@@ -7,8 +8,8 @@
 </template>
 
 <script>
-import Avatar from 'ant-design-vue/es/avatar'
-import Tooltip from 'ant-design-vue/es/tooltip'
+import Avatar from 'ant-design-vue/es/avatar';
+import Tooltip from 'ant-design-vue/es/tooltip';
 
 export default {
   name: 'AvatarItem',
@@ -30,17 +31,18 @@ export default {
   data () {
     return {
       size: this.$parent.size
-    }
+    };
   },
   computed: {
     avatarSize () {
-      return this.size !== 'mini' && this.size || 20
+      // eslint-disable-next-line no-mixed-operators
+      return this.size !== 'mini' && this.size || 20;
     }
   },
   watch: {
     '$parent.size' (val) {
-      this.size = val
+      this.size = val;
     }
   }
-}
+};
 </script>

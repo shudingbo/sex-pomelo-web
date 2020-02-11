@@ -21,7 +21,7 @@ const axis1Opts = {
     },
     hideFirstLine: false
   }
-}
+};
 const axis2Opts = {
   dataKey: 'score',
   line: null,
@@ -32,7 +32,7 @@ const axis2Opts = {
       lineDash: null
     }
   }
-}
+};
 
 const scale = [
   {
@@ -43,7 +43,7 @@ const scale = [
     dataKey: 'user',
     alias: '类型'
   }
-]
+];
 
 export default {
   name: 'Radar',
@@ -58,9 +58,9 @@ export default {
       axis1Opts,
       axis2Opts,
       scale
-    }
+    };
   }
-}
+};
 </script>
 
 <style scoped>

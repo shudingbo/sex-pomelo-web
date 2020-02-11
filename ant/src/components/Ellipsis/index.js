@@ -1,3 +1,3 @@
-import Ellipsis from './Ellipsis'
+import Ellipsis from './Ellipsis';
 
-export default Ellipsis
+export default Ellipsis;

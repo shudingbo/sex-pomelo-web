@@ -21,7 +21,7 @@ const tooltip = [
     name: x,
     value: y
   })
-]
+];
 const scale = [{
   dataKey: 'x',
   title: '日期(天)',
@@ -32,7 +32,7 @@ const scale = [{
   title: '流量(Gb)',
   alias: '流量(Gb)',
   min: 1
-}]
+}];
 
 export default {
   name: 'Bar',
@@ -47,18 +47,18 @@ export default {
       data: [],
       scale,
       tooltip
-    }
+    };
   },
   created () {
-    this.getMonthBar()
+    this.getMonthBar();
   },
   methods: {
     getMonthBar () {
       this.$http.get('/analysis/month-bar')
         .then(res => {
-          this.data = res.result
-        })
+          this.data = res.result;
+        });
     }
   }
-}
+};
 </script>

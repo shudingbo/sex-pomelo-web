@@ -16,29 +16,29 @@ export default {
     return {
       name: '',
       breadList: []
-    }
+    };
   },
   created () {
-    this.getBreadcrumb()
+    this.getBreadcrumb();
   },
   methods: {
     getBreadcrumb () {
-      this.breadList = []
+      this.breadList = [];
       // this.breadList.push({name: 'index', path: '/dashboard/', meta: {title: '首页'}})
 
-      this.name = this.$route.name
+      this.name = this.$route.name;
       this.$route.matched.forEach(item => {
         // item.name !== 'index' && this.breadList.push(item)
-        this.breadList.push(item)
-      })
+        this.breadList.push(item);
+      });
     }
   },
   watch: {
     $route () {
-      this.getBreadcrumb()
+      this.getBreadcrumb();
     }
   }
-}
+};
 </script>
 
 <style scoped>

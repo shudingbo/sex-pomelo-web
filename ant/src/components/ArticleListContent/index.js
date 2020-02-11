@@ -1,3 +1,3 @@
-import ArticleListContent from './ArticleListContent'
+import ArticleListContent from './ArticleListContent';
 
-export default ArticleListContent
+export default ArticleListContent;

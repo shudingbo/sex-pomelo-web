@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import Breadcrumb from '@/components/tools/Breadcrumb'
+import Breadcrumb from '@/components/tools/Breadcrumb';
 
 export default {
   name: 'PageHeader',
@@ -57,9 +57,9 @@ export default {
     }
   },
   data () {
-    return {}
+    return {};
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

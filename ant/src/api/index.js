@@ -8,5 +8,5 @@ const api = {
   SendSmsErr: '/account/sms_err',
   // get my info
   UserInfo: '/user/info'
-}
-export default api
+};
+export default api;

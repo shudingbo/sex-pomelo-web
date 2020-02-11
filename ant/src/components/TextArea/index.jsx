@@ -1,7 +1,7 @@
-import './style.less'
-import { getStrFullLength, cutStrByFullLength } from '../_util/util'
-import Input from 'ant-design-vue/es/input'
-const TextArea = Input.TextArea
+import './style.less';
+import { getStrFullLength, cutStrByFullLength } from '../_util/util';
+import Input from 'ant-design-vue/es/input';
+const TextArea = Input.TextArea;
 
 export default {
   name: 'LimitTextArea',
@@ -26,44 +26,44 @@ export default {
   data () {
     return {
       currentLimit: 0
-    }
+    };
   },
   watch: {
     value (val) {
-      this.calcLimitNum(val)
+      this.calcLimitNum(val);
     }
   },
   created () {
-    this.calcLimitNum(this.value)
+    this.calcLimitNum(this.value);
   },
   methods: {
     handleChange (e) {
-      const value = e.target.value
-      const len = getStrFullLength(value)
+      const value = e.target.value;
+      const len = getStrFullLength(value);
       if (len <= this.limit) {
-        this.currentLimit = len
-        this.$emit('change', value)
-        return
+        this.currentLimit = len;
+        this.$emit('change', value);
+        return;
       } else {
-        const str = cutStrByFullLength(value, this.limit)
-        this.currentLimit = getStrFullLength(str)
-        this.$emit('change', str)
+        const str = cutStrByFullLength(value, this.limit);
+        this.currentLimit = getStrFullLength(str);
+        this.$emit('change', str);
       }
-      console.error('limit out! currentLimit:', this.currentLimit)
+      console.error('limit out! currentLimit:', this.currentLimit);
     },
     calcLimitNum (val) {
-      const len = getStrFullLength(val)
-      this.currentLimit = len
+      const len = getStrFullLength(val);
+      this.currentLimit = len;
     }
   },
   render () {
-    const { prefixCls, ...props } = this.$props
+    const { prefixCls, ...props } = this.$props;
     return (
       <div class={this.prefixCls}>
         <TextArea {...{ props }} value={this.value} onChange={this.handleChange}>
         </TextArea>
         <span class="limit">{this.currentLimit}/{this.limit}</span>
       </div>
-    )
+    );
   }
-}
+};

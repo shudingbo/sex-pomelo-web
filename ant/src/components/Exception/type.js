@@ -14,6 +14,6 @@ const types = {
     title: '500',
     desc: '抱歉，服务器出错了'
   }
-}
+};
 
-export default types
+export default types;

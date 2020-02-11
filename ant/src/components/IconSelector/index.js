@@ -1,2 +1,2 @@
-import IconSelector from './IconSelector'
-export default IconSelector
+import IconSelector from './IconSelector';
+export default IconSelector;

@@ -40,14 +40,14 @@ export default {
     return {
       trend: this.type && 'up' || 'down',
       rate: this.percentage
-    }
+    };
   },
   created () {
-    const type = this.type === null ? this.value >= this.target : this.type
-    this.trend = type ? 'up' : 'down'
-    this.rate = (this.percentage === null ? Math.abs(this.value - this.target) * 100 / this.target : this.percentage).toFixed(this.fixed)
+    const type = this.type === null ? this.value >= this.target : this.type;
+    this.trend = type ? 'up' : 'down';
+    this.rate = (this.percentage === null ? Math.abs(this.value - this.target) * 100 / this.target : this.percentage).toFixed(this.fixed);
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

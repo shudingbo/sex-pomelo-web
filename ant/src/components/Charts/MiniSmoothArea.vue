@@ -30,9 +30,9 @@ export default {
   data () {
     return {
       height: 100
-    }
+    };
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

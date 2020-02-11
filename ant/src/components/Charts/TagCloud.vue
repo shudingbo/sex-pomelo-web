@@ -7,15 +7,15 @@
 </template>
 
 <script>
-import { registerShape } from 'viser-vue'
-const DataSet = require('@antv/data-set')
+import { registerShape } from 'viser-vue';
+const DataSet = require('@antv/data-set');
 
-const imgUrl = 'https://gw.alipayobjects.com/zos/rmsportal/gWyeGLCdFFRavBGIDzWk.png'
+const imgUrl = 'https://gw.alipayobjects.com/zos/rmsportal/gWyeGLCdFFRavBGIDzWk.png';
 
 const scale = [
   { dataKey: 'x', nice: false },
   { dataKey: 'y', nice: false }
-]
+];
 
 registerShape('point', 'cloud', {
   draw (cfg, container) {
@@ -33,9 +33,9 @@ registerShape('point', 'cloud', {
         x: cfg.x,
         y: cfg.y
       }
-    })
+    });
   }
-})
+});
 
 export default {
   name: 'TagCloud',
@@ -57,31 +57,31 @@ export default {
     return {
       data: [],
       scale
-    }
+    };
   },
   watch: {
     tagList: function (val) {
       if (val.length > 0) {
-        this.initTagCloud(val)
+        this.initTagCloud(val);
       }
     }
   },
   mounted () {
     if (this.tagList.length > 0) {
-      this.initTagCloud(this.tagList)
+      this.initTagCloud(this.tagList);
     }
   },
   methods: {
     initTagCloud (dataSource) {
-      const { height, width } = this
+      const { height, width } = this;
 
-      const dv = new DataSet.View().source(dataSource)
-      const range = dv.range('value')
-      const min = range[0]
-      const max = range[1]
-      const imageMask = new Image()
-      imageMask.crossOrigin = ''
-      imageMask.src = imgUrl
+      const dv = new DataSet.View().source(dataSource);
+      const range = dv.range('value');
+      const min = range[0];
+      const max = range[1];
+      const imageMask = new Image();
+      imageMask.crossOrigin = '';
+      imageMask.src = imgUrl;
       imageMask.onload = () => {
         dv.transform({
           type: 'tag-cloud',
@@ -92,22 +92,22 @@ export default {
           padding: 0,
           timeInterval: 5000, // max execute time
           rotate () {
-            let random = ~~(Math.random() * 4) % 4
+            let random = ~~(Math.random() * 4) % 4;
             if (random === 2) {
-              random = 0
+              random = 0;
             }
-            return random * 90 // 0, 90, 270
+            return random * 90; // 0, 90, 270
           },
           fontSize (d) {
             if (d.value) {
-              return ((d.value - min) / (max - min)) * (32 - 8) + 8
+              return ((d.value - min) / (max - min)) * (32 - 8) + 8;
             }
-            return 0
+            return 0;
           }
-        })
-        this.data = dv.rows
-      }
+        });
+        this.data = dv.rows;
+      };
     }
   }
-}
+};
 </script>

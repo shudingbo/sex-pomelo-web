@@ -14,7 +14,7 @@ const classes = [
   'antd-pro-components-standard-form-row-index-standardFormRowBlock',
   'antd-pro-components-standard-form-row-index-standardFormRowGrid',
   'antd-pro-components-standard-form-row-index-standardFormRowLast'
-]
+];
 export default {
   name: 'StandardFormRow',
   props: {
@@ -38,16 +38,16 @@ export default {
   },
   computed: {
     lastCls () {
-      return this.last ? classes[2] : null
+      return this.last ? classes[2] : null;
     },
     blockCls () {
-      return this.block ? classes[0] : null
+      return this.block ? classes[0] : null;
     },
     gridCls () {
-      return this.grid ? classes[1] : null
+      return this.grid ? classes[1] : null;
     }
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

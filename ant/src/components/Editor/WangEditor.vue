@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import WEditor from 'wangeditor'
+import WEditor from 'wangeditor';
 
 export default {
   name: 'WangEditor',
@@ -23,29 +23,29 @@ export default {
     return {
       editor: null,
       editorContent: null
-    }
+    };
   },
   watch: {
     value (val) {
-      this.editorContent = val
-      this.editor.txt.html(val)
+      this.editorContent = val;
+      this.editor.txt.html(val);
     }
   },
   mounted () {
-    this.initEditor()
+    this.initEditor();
   },
   methods: {
     initEditor () {
-      this.editor = new WEditor(this.$refs.editor)
+      this.editor = new WEditor(this.$refs.editor);
       // this.editor.onchangeTimeout = 200
       this.editor.customConfig.onchange = (html) => {
-        this.editorContent = html
-        this.$emit('change', this.editorContent)
-      }
-      this.editor.create()
+        this.editorContent = html;
+        this.$emit('change', this.editorContent);
+      };
+      this.editor.create();
     }
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

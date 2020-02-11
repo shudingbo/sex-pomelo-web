@@ -20,6 +20,13 @@ export const asyncRouterMap = [
         meta: { title: '仪表盘', keepAlive: true, icon: bxAnaalyse, permission: [ 'dashboard' ] },
         children: [
           {
+            path: '/dashboard/serverinfo',
+            name: 'ServerInfo',
+            hidden: true,
+            component: () => import('@/views/dashboard/ServerInfo'),
+            meta: { title: '服务器信息' }
+          },
+          {
             path: '/dashboard/analysis',
             name: 'Analysis',
             component: () => import('@/views/dashboard/Analysis'),
@@ -36,12 +43,6 @@ export const asyncRouterMap = [
             name: 'Workplace',
             component: () => import('@/views/dashboard/Workplace'),
             meta: { title: '服务器列表', keepAlive: true, permission: [ 'dashboard' ] }
-          },
-          {
-            path: '/dashboard/test-work',
-            name: 'TestWork',
-            component: () => import('@/views/dashboard/TestWork'),
-            meta: { title: '测试功能', keepAlive: true, permission: [ 'dashboard' ] }
           }
         ]
       }

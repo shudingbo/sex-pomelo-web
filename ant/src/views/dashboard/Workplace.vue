@@ -1,6 +1,6 @@
 <template>
   <div>
-    <a-card title="服务器列表">
+    <a-card title="Server List">
       <div slot="extra">
             <a-input-search
                 placeholder="筛选"
@@ -10,7 +10,15 @@
           </div>
       <a-table :columns="ServerCloumn" :dataSource="servers" :pagination="false" size="small" rowKey="serverId" bordered="">
         <template slot="slTag" slot-scope="text,record">
-          <a-tag :color="record.enabled?'green':''"> {{ text}} </a-tag>
+          <a-tag :color="record.frontend?'green':''"> {{ text}} </a-tag>
+        </template>
+        <template slot="slPort" slot-scope="text">
+          <a-tag v-if="text>0" :color="text>0?'green':''"> {{ text}} </a-tag>
+        </template>
+        <template slot="slSerId" slot-scope="text,record">
+          <router-link :to="{path:'/dashboard/serverinfo',query:record}" tag="a" target="_blank">
+            <a-tag>{{text}}</a-tag>
+          </router-link>
         </template>
         <template slot="slOper" slot-scope="text,record" v-if="record.serverType!='master'">
           <a-popconfirm v-if="record.runStatus" :title="`Sure to Stop ${record.serverId}`" @confirm="() => stopServer(record)">
@@ -45,6 +53,7 @@ export default {
         {
           title: 'serverId',
           dataIndex: 'serverId',
+          scopedSlots: { customRender: 'slSerId' },
           filteredValue: this.filter || null,
           onFilter: (value, record) => {
             return this.filterFnNor(value, record);
@@ -52,16 +61,21 @@ export default {
           sorter: (a, b) => a.serverId - b.serverId
         },
         { title: 'serverType', dataIndex: 'serverType', width: 140, sorter: (a, b) => a.serverType.localeCompare(b.serverType) },
-        { title: 'host', dataIndex: 'host', width: 120, scopedSlots: { customRender: 'slTag' }, sorter: (a, b) => a.host.localeCompare(b.host) },
-        { title: 'pid', dataIndex: 'pid', width: 50, sorter: (a, b) => a.pid - b.pid },
+        { title: 'host', dataIndex: 'host', scopedSlots: { customRender: 'slTag' }, sorter: (a, b) => a.host.localeCompare(b.host) },
+        { title: 'port', dataIndex: 'port', sorter: (a, b) => a.port - b.port },
+        { title: 'clientPort', dataIndex: 'clientPort', scopedSlots: { customRender: 'slPort' }, sorter: (a, b) => a.clientPort - b.clientPort },
+        { title: 'frontend', dataIndex: 'frontend', sorter: (a, b) => { return ((a.frontend ? 1 : 0) - (b.frontend ? 1 : 0)); } },
+        { title: 'pid', dataIndex: 'pid', sorter: (a, b) => a.pid - b.pid },
         { title: 'heapUsed(M)', dataIndex: 'heapUsed', sorter: (a, b) => a.heapUsed - b.heapUsed },
         { title: 'upTime(m)', dataIndex: 'uptime', sorter: (a, b) => a.upTime - b.upTime },
-        { title: '操作', scopedSlots: { customRender: 'slOper' } }
+        { title: 'Operator', scopedSlots: { customRender: 'slOper' } }
       ];
       return ServerCloumn;
     }
   },
   created () {
+    this.setSexpContext('all');
+    console.log(`context:${this.getSexpContext()}`);
     this.getServiceList();
   },
   mounted () {
@@ -74,12 +88,11 @@ export default {
         params: { cmd: 'show servers' }
       });
       if (ret.status === 'success') {
-        for (let key in ret.data.info) {
-          let info = ret.data.info[key];
+        for (let key in ret.data) {
+          let info = ret.data[key];
           info.runStatus = true;
           this.servers.push(info);
         }
-        console.log(this.servers);
       } else {
         this.$message.warn(ret.message);
       }

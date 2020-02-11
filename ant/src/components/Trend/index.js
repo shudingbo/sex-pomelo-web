@@ -1,3 +1,3 @@
-import Trend from './Trend.vue'
+import Trend from './Trend.vue';
 
-export default Trend
+export default Trend;

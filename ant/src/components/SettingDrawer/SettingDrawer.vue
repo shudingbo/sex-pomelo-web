@@ -170,11 +170,11 @@
 </template>
 
 <script>
-import { DetailList } from '@/components'
-import SettingItem from './SettingItem'
-import config from '@/config/defaultSettings'
-import { updateTheme, updateColorWeak, colorList } from './settingConfig'
-import { mixin, mixinDevice } from '@/utils/mixin'
+import { DetailList } from '@/components';
+import SettingItem from './SettingItem';
+import config from '@/config/defaultSettings';
+import { updateTheme, updateColorWeak, colorList } from './settingConfig';
+import { mixin, mixinDevice } from '@/utils/mixin';
 
 export default {
   components: {
@@ -187,36 +187,36 @@ export default {
       visible: false,
       colorList,
       handle: <div/>
-    }
+    };
   },
   watch: {
 
   },
   mounted () {
-    updateTheme(this.primaryColor)
+    updateTheme(this.primaryColor);
     if (this.colorWeak !== config.colorWeak) {
-      updateColorWeak(this.colorWeak)
+      updateColorWeak(this.colorWeak);
     }
   },
   methods: {
     showDrawer () {
-      this.visible = true
+      this.visible = true;
     },
     onClose () {
-      this.visible = false
+      this.visible = false;
     },
     toggle () {
-      this.visible = !this.visible
+      this.visible = !this.visible;
     },
     onColorWeak (checked) {
-      this.$store.dispatch('ToggleWeak', checked)
-      updateColorWeak(checked)
+      this.$store.dispatch('ToggleWeak', checked);
+      updateColorWeak(checked);
     },
     onMultiTab (checked) {
-      this.$store.dispatch('ToggleMultiTab', checked)
+      this.$store.dispatch('ToggleMultiTab', checked);
     },
     handleMenuTheme (theme) {
-      this.$store.dispatch('ToggleTheme', theme)
+      this.$store.dispatch('ToggleTheme', theme);
     },
     doCopy () {
       // get current settings from mixin or this.$store.state.app, pay attention to the property name
@@ -237,44 +237,44 @@ export default {
     name: 'ls',
     storage: 'local',
   }
-}`
+}`;
       this.$copyText(text).then(message => {
-        console.log('copy', message)
-        this.$message.success('复制完毕')
+        console.log('copy', message);
+        this.$message.success('复制完毕');
       }).catch(err => {
-        console.log('copy.err', err)
-        this.$message.error('复制失败')
-      })
+        console.log('copy.err', err);
+        this.$message.error('复制失败');
+      });
     },
     handleLayout (mode) {
-      this.$store.dispatch('ToggleLayoutMode', mode)
+      this.$store.dispatch('ToggleLayoutMode', mode);
       // 因为顶部菜单不能固定左侧菜单栏，所以强制关闭
-      this.handleFixSiderbar(false)
+      this.handleFixSiderbar(false);
     },
     handleContentWidthChange (type) {
-      this.$store.dispatch('ToggleContentWidth', type)
+      this.$store.dispatch('ToggleContentWidth', type);
     },
     changeColor (color) {
       if (this.primaryColor !== color) {
-        this.$store.dispatch('ToggleColor', color)
-        updateTheme(color)
+        this.$store.dispatch('ToggleColor', color);
+        updateTheme(color);
       }
     },
     handleFixedHeader (fixed) {
-      this.$store.dispatch('ToggleFixedHeader', fixed)
+      this.$store.dispatch('ToggleFixedHeader', fixed);
     },
     handleFixedHeaderHidden (autoHidden) {
-      this.$store.dispatch('ToggleFixedHeaderHidden', autoHidden)
+      this.$store.dispatch('ToggleFixedHeaderHidden', autoHidden);
     },
     handleFixSiderbar (fixed) {
       if (this.layoutMode === 'topmenu') {
-        this.$store.dispatch('ToggleFixSiderbar', false)
-        return
+        this.$store.dispatch('ToggleFixSiderbar', false);
+        return;
       }
-      this.$store.dispatch('ToggleFixSiderbar', fixed)
+      this.$store.dispatch('ToggleFixSiderbar', fixed);
     }
   }
-}
+};
 </script>
 
 <style lang="less" scoped>

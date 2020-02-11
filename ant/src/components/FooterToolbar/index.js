@@ -1,4 +1,4 @@
-import FooterToolBar from './FooterToolBar'
-import './index.less'
+import FooterToolBar from './FooterToolBar';
+import './index.less';
 
-export default FooterToolBar
+export default FooterToolBar;
