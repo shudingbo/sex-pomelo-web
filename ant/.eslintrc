@@ -32,7 +32,9 @@
     "vue/require-prop-types": "off",
     "vue/require-default-prop": "off",
     "vue/no-reserved-keys": "off",
-    "vue/prop-name-casing": "off"
+    "vue/prop-name-casing": "off",
+    "no-bitwise": 0,//禁止使用按位运算符
+    "no-unused-vars": ["off"]
   },
 
 }

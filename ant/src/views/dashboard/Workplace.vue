@@ -1,40 +1,85 @@
 <template>
   <div>
-    <a-card title="Server List">
-      <div slot="extra">
-            <a-input-search
-                placeholder="筛选"
-                v-model="filter[0]"
-                style="width:120px;margin-right:5px">
-            </a-input-search>
-          </div>
-      <a-table :columns="ServerCloumn" :dataSource="servers" :pagination="false" size="small" rowKey="serverId" bordered="">
-        <template slot="slTag" slot-scope="text,record">
-          <a-tag :color="record.frontend?'green':''"> {{ text}} </a-tag>
-        </template>
-        <template slot="slPort" slot-scope="text">
-          <a-tag v-if="text>0" :color="text>0?'green':''"> {{ text}} </a-tag>
-        </template>
-        <template slot="slSerId" slot-scope="text,record">
-          <router-link :to="{path:'/dashboard/serverinfo',query:record}" tag="a" target="_blank">
-            <a-tag>{{text}}</a-tag>
-          </router-link>
-        </template>
-        <template slot="slOper" slot-scope="text,record" v-if="record.serverType!='master'">
-          <a-popconfirm v-if="record.runStatus" :title="`Sure to Stop ${record.serverId}`" @confirm="() => stopServer(record)">
-            <a-button size="small" type="danger" icon="poweroff"></a-button>
-          </a-popconfirm>
-          <a-popconfirm v-if="!record.runStatus" :title="`Sure to Start ${record.serverId}`" @confirm="() => startServer(record)">
-            <a-button size="small" type="primary" icon="reload"></a-button>
-          </a-popconfirm>
-        </template>
-      </a-table>
-    </a-card>
+    <a-tabs defaultActiveKey="sysT">
+      <a-tab-pane tab="Graphics" key="sysG">
+
+      </a-tab-pane>
+      <a-tab-pane tab="Table" key="sysT">
+        <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="hostname" size="small">
+            <a-badge slot="slHost" slot-scope="text,record" :count="record.nodes.length" :numberStyle="{backgroundColor: '#52c41a'}">
+              <a-tag href="javascript:;">{{text}}</a-tag>
+            </a-badge>
+          <a-table
+            slot="expandedRowRender"
+            slot-scope="record"
+            :columns="nodeColums"
+            :dataSource="record.nodes"
+            :pagination="false"
+            rowKey="serverId"
+            size="small"
+          >
+            <template slot="slSerId" slot-scope="text,record">
+              <router-link :to="{path:'/dashboard/serverinfo',query:record}" tag="a" target="_blank">
+                <a-tag>{{text}}</a-tag>
+              </router-link>
+            </template>
+          </a-table>
+        </a-table>
+      </a-tab-pane>
+    </a-tabs>
   </div>
 </template>
 
 <script>
 import { axios } from '@/utils/request';
+
+const sysColumns = [
+  { title: 'host', dataIndex: 'hostname', scopedSlots: { customRender: 'slHost' } },
+  { title: 'IP', dataIndex: 'ip' },
+  { title: 'Time', dataIndex: 'Time' },
+  {
+    title: 'CPU',
+    children: [
+      { title: 'user', dataIndex: 'cpu_user' },
+      { title: 'system', dataIndex: 'cpu_system' },
+      { title: 'idle', dataIndex: 'cpu_idle' }
+    ]
+  },
+  {
+    title: 'IO',
+    children: [
+      { title: 'tps', dataIndex: 'tps', sorter: (a, b) => a.tps - b.tps },
+      { title: 'kb_read', dataIndex: 'kb_read' },
+      { title: 'kb_wrtn', dataIndex: 'kb_wrtn' }
+    ]
+  },
+  {
+    title: 'Memory(MB)',
+    children: [
+      { title: 'total', dataIndex: 'totalmem', sorter: (a, b) => a.totalmem - b.totalmem },
+      { title: 'free', dataIndex: 'freemem', sorter: (a, b) => a.freemem - b.freemem },
+      { title: 'f/t', dataIndex: 'free/total' }
+    ]
+  }
+];
+
+const nodeColums = [
+  { title: 'serverId', dataIndex: 'serverId', scopedSlots: { customRender: 'slSerId' }, sorter: (a, b) => a.serverId.localeCompare(b.serverId) },
+  { title: 'port', dataIndex: 'port' },
+  { title: 'cpuAvg', dataIndex: 'cpuAvg', sorter: (a, b) => a.cpuAvg - b.cpuAvg },
+  { title: 'memAvg', dataIndex: 'memAvg', sorter: (a, b) => a.memAvg - b.memAvg },
+  {
+    title: 'mem(MB)',
+    children: [
+      { title: 'vsz', dataIndex: 'vsz', sorter: (a, b) => a.vsz - b.vsz },
+      { title: 'rss', dataIndex: 'rss', sorter: (a, b) => a.rss - b.rss },
+      { title: 'usr', dataIndex: 'usr', sorter: (a, b) => a.usr - b.usr },
+      { title: 'sys', dataIndex: 'sys', sorter: (a, b) => a.sys - b.sys },
+      { title: 'heapUsed', dataIndex: 'heapUsed', sorter: (a, b) => a.heapUsed - b.heapUsed }
+    ]
+  },
+  { title: 'uptime(m)', dataIndex: 'uptime', sorter: (a, b) => a.uptime - b.uptime }
+];
 
 export default {
   name: 'Workplace',
@@ -43,34 +88,41 @@ export default {
   },
   data () {
     return {
+      sysColumns,
+      nodeColums,
       servers: [],
       filter: ['']
     };
   },
   computed: {
-    ServerCloumn () {
-      const ServerCloumn = [
-        {
-          title: 'serverId',
-          dataIndex: 'serverId',
-          scopedSlots: { customRender: 'slSerId' },
-          filteredValue: this.filter || null,
-          onFilter: (value, record) => {
-            return this.filterFnNor(value, record);
-          },
-          sorter: (a, b) => a.serverId - b.serverId
-        },
-        { title: 'serverType', dataIndex: 'serverType', width: 140, sorter: (a, b) => a.serverType.localeCompare(b.serverType) },
-        { title: 'host', dataIndex: 'host', scopedSlots: { customRender: 'slTag' }, sorter: (a, b) => a.host.localeCompare(b.host) },
-        { title: 'port', dataIndex: 'port', sorter: (a, b) => a.port - b.port },
-        { title: 'clientPort', dataIndex: 'clientPort', scopedSlots: { customRender: 'slPort' }, sorter: (a, b) => a.clientPort - b.clientPort },
-        { title: 'frontend', dataIndex: 'frontend', sorter: (a, b) => { return ((a.frontend ? 1 : 0) - (b.frontend ? 1 : 0)); } },
-        { title: 'pid', dataIndex: 'pid', sorter: (a, b) => a.pid - b.pid },
-        { title: 'heapUsed(M)', dataIndex: 'heapUsed', sorter: (a, b) => a.heapUsed - b.heapUsed },
-        { title: 'upTime(m)', dataIndex: 'uptime', sorter: (a, b) => a.upTime - b.upTime },
-        { title: 'Operator', scopedSlots: { customRender: 'slOper' } }
-      ];
-      return ServerCloumn;
+    sysMap () {
+      return this.$store.getters.sexpSystemMap;
+    },
+    sysMapArr () {
+      let ret = [];
+      let o = this.$store.getters.sexpSystemMap;
+      for (let sys in o) {
+        let it = o[sys];
+        let nodes = [];
+        for (let i in it.nodes) {
+          let n = Object.assign({}, it.nodes[i]);
+          n.vsz = (n.vsz / (1024 * 1024)).toFixed(2);
+          n.rss = (n.rss / (1024 * 1024)).toFixed(2);
+          nodes.push(n);
+        }
+
+        let nO = Object.assign({}, it);
+        nO.totalmem = parseInt(nO.totalmem / (1024 * 1024));
+        nO.freemem = parseInt(nO.freemem / (1024 * 1024));
+        nO['free/total'] = nO['free/total'].toFixed(2);
+
+        let time = new Date(nO.Time);
+        nO.Time = time.Format('MM-dd hh:mm');
+        nO.nodes = nodes;
+        ret.push(nO);
+      }
+
+      return ret;
     }
   },
   created () {
@@ -81,48 +133,12 @@ export default {
   },
   methods: {
     async getServiceList () {
-      const ret = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd: 'show servers' }
-      });
-      if (ret.status === 'success') {
-        for (let key in ret.data) {
-          let info = ret.data[key];
-          info.runStatus = true;
-          this.servers.push(info);
-        }
-      } else {
-        this.$message.warn(ret.message);
+      let servers = this.$store.getters.sexpServers;
+      for (let key in servers) {
+        let info = servers[key];
+        info.runStatus = true;
+        this.servers.push(info);
       }
-    },
-    async stopServer (serverInfo) {
-      let serverId = serverInfo.serverId;
-      const ret = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd: `stop ${serverId}` }
-      });
-      if (ret.status === 'success') {
-        serverInfo.runStatus = false;
-      }
-
-      this.axiosMsg(ret);
-    },
-    async startServer (serverInfo) {
-
-    },
-    filterFnNor (key, it) {
-      let szServerID = it.serverId.toString();
-      if (szServerID.indexOf(key) !== -1) {
-        return true;
-      }
-
-      if (it.serverType.indexOf(key) !== -1) {
-        return true;
-      }
-
-      return false;
     }
   }
 };
