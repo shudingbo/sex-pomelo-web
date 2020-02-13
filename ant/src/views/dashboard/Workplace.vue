@@ -1,8 +1,8 @@
 <template>
   <div>
-    <a-tabs defaultActiveKey="sysT">
-      <a-tab-pane tab="Graphics" key="sysG">
-
+    <a-tabs defaultActiveKey="sysG">
+      <a-tab-pane tab="Graphics" key="sysG" forceRender>
+        <div id="container" />
       </a-tab-pane>
       <a-tab-pane tab="Table" key="sysT">
         <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="hostname" size="small">
@@ -32,6 +32,7 @@
 
 <script>
 import { axios } from '@/utils/request';
+import G6 from '@antv/g6';
 
 const sysColumns = [
   { title: 'host', dataIndex: 'hostname', scopedSlots: { customRender: 'slHost' } },
@@ -123,13 +124,48 @@ export default {
       }
 
       return ret;
+    },
+    gData () {
+      let data = { id: 'sex', children: [], descr: '', cnt: 1 };
+      let o = this.$store.getters.sexpSystemMap;
+      for (let sys in o) {
+        let it = o[sys];
+        let msg = `memfree: ${it.freemem}`;
+        let nSys = { id: it.hostname, descr: msg, cnt: Object.keys(it.nodes).length, lv: 'sys' };
+
+        let types = {};
+        for (let i in it.nodes) {
+          let v = it.nodes[i];
+
+          let msg = `memAvg: ${v.memAvg}`;
+          let node = { id: v.serverId, descr: msg, lv: 'node' };
+
+          if (types[v.serverType] === undefined) {
+            types[v.serverType] = { id: v.serverType, descr: '', children: [node], lv: 'node', cnt: 1 };
+          } else {
+            types[v.serverType].children.push(node);
+            types[v.serverType].cnt++;
+          }
+        }
+
+        let nodes = [];
+        for (let i in types) {
+          nodes.push(types[i]);
+        }
+
+        nSys.children = nodes;
+        data.children.push(nSys);
+      }
+      return data;
     }
   },
   created () {
     this.setSexpContext('all');
     this.getServiceList();
+    console.log(this.gData);
   },
   mounted () {
+    this.createGraphics();
   },
   methods: {
     async getServiceList () {
@@ -139,11 +175,117 @@ export default {
         info.runStatus = true;
         this.servers.push(info);
       }
+    },
+    createGraphics () {
+      const width = document.getElementById('container').scrollWidth;
+      const height = document.getElementById('container').scrollHeight || 500;
+      const graph = new G6.TreeGraph({
+        container: 'container',
+        width,
+        height,
+        linkCenter: true,
+        modes: {
+          default: ['drag-canvas', 'zoom-canvas',
+            {
+              type: 'collapse-expand',
+              onChange: function onChange (item, collapsed) {
+                const data = item.getModel();
+                data.collapsed = collapsed;
+                return true;
+              }
+            },
+            {
+              type: 'tooltip',
+              formatText: function formatText (model) {
+                const text = '' + model.descr;
+                return text;
+              }
+            }
+          ]
+        },
+        nodeStateStyles: {
+          // 鼠标hover状态下的配置
+          hover: {
+            fillOpacity: 0.8
+          },
+          // 选中节点状态下的配置
+          selected: {
+            lineWidth: 5
+          }
+        },
+        defaultNode: {
+          // type: 'rect',
+          size: 16,
+          style: {
+            fill: '#C6E5FF',
+            stroke: '#5B8FF9'
+          }
+        },
+        defaultEdge: {
+          style: {
+            stroke: '#A3B1BF'
+          }
+        },
+        layout: {
+          type: 'dendrogram',
+          direction: 'LR',
+          nodeSep: 20,
+          rankSep: 100,
+          radial: true
+        }
+        // layout: {
+        //   type: 'compactBox',
+        //   direction: 'LR',
+        //   getId: function getId (d) {
+        //     return d.id;
+        //   },
+        //   getHeight: function getHeight () {
+        //     return 16;
+        //   },
+        //   getWidth: function getWidth () {
+        //     return 16;
+        //   },
+        //   getVGap: function getVGap () {
+        //     return 10;
+        //   },
+        //   getHGap: function getHGap () {
+        //     return 100;
+        //   }
+        // }
+      });
+
+      graph.node(function (node) {
+        let label = node.id;
+        if (node.cnt !== undefined) {
+          label += `(${node.cnt})`;
+        }
+
+        return {
+          label,
+          labelCfg: {
+            offset: 10,
+            position: node.children && node.children.length > 0 ? 'left' : 'right'
+          }
+        };
+      });
+
+      graph.data(this.gData);
+      graph.render();
+      graph.fitView();
     }
   }
 };
 </script>
 
-<style lang="less" scoped>
+<style>
+.g6-tooltip {
+    border: 1px solid #e2e2e2;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #545454;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 10px 8px;
+    box-shadow: rgb(174, 174, 174) 0px 0px 10px;
+  }
 
 </style>
