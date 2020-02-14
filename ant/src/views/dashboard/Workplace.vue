@@ -2,7 +2,17 @@
   <div>
     <a-tabs defaultActiveKey="sysG">
       <a-tab-pane tab="Graphics" key="sysG" forceRender>
-        <div id="container" />
+        <div>
+          <div style="float:left;position:absolute; ">
+            <a-radio-group size="small">
+              <a-radio-button value="large">Large absolute</a-radio-button>
+              <a-radio-button value="default">Default</a-radio-button>
+              <a-radio-button value="small">Small</a-radio-button>
+            </a-radio-group>
+            <a-button type="primary" size="small">Primary</a-button>
+          </div>
+          <div id="container" />
+        </div>
       </a-tab-pane>
       <a-tab-pane tab="Table" key="sysT">
         <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="hostname" size="small">
@@ -82,6 +92,456 @@ const nodeColums = [
   { title: 'uptime(m)', dataIndex: 'uptime', sorter: (a, b) => a.uptime - b.uptime }
 ];
 
+let ipHideTimer;
+
+const TREE_NODE = 'tree-node';
+
+const SOFAROUTER_TEXT_CLASS = 'sofarouter-text-class';
+const SOFAROUTER_RECT_CLASS = 'sofarouter-rect-class';
+
+// const CANVAS_WIDTH = document.getElementById('container').scrollWidth;
+// const CANVAS_HEIGHT = document.getElementById('container').scrollHeight;
+
+const getNodeConfig = function getNodeConfig (node) {
+  const cfgPurple = { basicColor: '#722ED1', fontColor: '#722ED1', borderColor: '#722ED1', bgColor: '#F6EDFC' };
+  const cfgGray = { basicColor: '#E3E6E8', fontColor: 'rgba(0,0,0,0.85)', borderColor: '#E3E6E8', bgColor: '#F7F9FA' };
+  const cfgBlue = { basicColor: '#2F54EB', fontColor: '#2F54EB', borderColor: '#2F54EB', bgColor: '#F3F6FD' };
+  const cfgYellow = { basicColor: '#FA8C16', fontColor: '#FA8C16', borderColor: '#FA8C16', bgColor: '#FCF4E3' };
+  const cfgGreen = { basicColor: '#52C41A', fontColor: '#52C41A', borderColor: '#52C41A', bgColor: '#F4FCEB' };
+  const cfgRed = { basicColor: '#F5222D', fontColor: '#FFF', borderColor: '#F5222D', bgColor: '#E66A6C' };
+  switch (node.lv) {
+  case 'sys':
+    return (node.orgi['free/total'] < 0.4 || node.orgi.cpu_idle < 50) ? cfgYellow : cfgBlue;
+  case 'node':
+    if (typeof (node.orgi.pid) === 'number') { // node is run
+      return (node.orgi.frontend) ? cfgPurple : cfgGreen;
+    } else {
+      return cfgGray;
+    }
+  default:
+    return cfgGray;
+  }
+};
+
+const COLLAPSE_ICON = function COLLAPSE_ICON (x, y, r) {
+  return [[ 'M', x - r, y ], [ 'a', r, r, 0, 1, 0, r * 2, 0 ], [ 'a', r, r, 0, 1, 0, -r * 2, 0 ], [ 'M', x - r + 4, y ], [ 'L', x - r + 2 * r - 4, y ]];
+};
+const EXPAND_ICON = function EXPAND_ICON (x, y, r) {
+  return [[ 'M', x - r, y ], [ 'a', r, r, 0, 1, 0, r * 2, 0 ], [ 'a', r, r, 0, 1, 0, -r * 2, 0 ], [ 'M', x - r + 4, y ], [ 'L', x - r + 2 * r - 4, y ], [ 'M', x - r + r, y - r + 4 ], [ 'L', x, y + r - 4 ]];
+};
+
+let selectedItem;
+
+let gGraph = null;
+
+/* 精简节点和复杂节点共用的一些方法 */
+const nodeBasicMethod = {
+  createNodeBox: function createNodeBox (group, config, width, height, isRoot) {
+    /* 最外面的大矩形 */
+    const container = group.addShape('rect', {
+      attrs: {
+        x: 0,
+        y: 0,
+        width,
+        height
+      },
+      name: 'container-rect-shape'
+    });
+    if (!isRoot) {
+      /* 左边的小圆点 */
+      group.addShape('circle', {
+        attrs: {
+          x: 3,
+          y: height / 2,
+          r: 6,
+          fill: config.basicColor
+        },
+        name: 'left-dot-shape'
+      });
+    }
+    /* 矩形 */
+    group.addShape('rect', {
+      attrs: {
+        x: 3,
+        y: 0,
+        width: width - 19,
+        height,
+        fill: config.bgColor,
+        stroke: config.borderColor,
+        radius: 2
+      },
+      name: 'rect-shape'
+    });
+
+    /* 左边的粗线 */
+    group.addShape('rect', {
+      attrs: {
+        x: 3,
+        y: 0,
+        width: 3,
+        height,
+        fill: config.basicColor,
+        radius: 1.5
+      },
+      name: 'left-border-shape'
+    });
+    return container;
+  },
+  /* 生成树上的 marker */
+  createNodeMarker: function createNodeMarker (group, collapsed, x, y) {
+    group.addShape('circle', {
+      attrs: {
+        x,
+        y,
+        r: 16,
+        fill: 'rgba(47, 84, 235, 0.05)',
+        opacity: 0,
+        zIndex: -2
+      },
+      name: 'collapse-icon-bg'
+    });
+    group.addShape('marker', {
+      attrs: {
+        x,
+        y,
+        r: 10,
+        symbol: collapsed ? EXPAND_ICON : COLLAPSE_ICON,
+        stroke: 'rgba(0,0,0,0.25)',
+        fill: 'rgba(0,0,0,0)',
+        lineWidth: 1,
+        cursor: 'pointer'
+      },
+      name: 'collapse-icon'
+    });
+  },
+  afterDraw: function afterDraw (cfg, group) {
+    /* 操作 marker 的背景色显示隐藏 */
+    const icon = group.find(element => element.get('name') === 'collapse-icon');
+    if (icon) {
+      const bg = group.find(element => element.get('name') === 'collapse-icon-bg');
+      icon.on('mouseenter', function () {
+        bg.attr('opacity', 1);
+        gGraph.get('canvas').draw();
+      });
+      icon.on('mouseleave', function () {
+        bg.attr('opacity', 0);
+        gGraph.get('canvas').draw();
+      });
+    }
+  },
+  setState: function setState (name, value, item) {
+    const hasOpacityClass = [ 'collapse-icon-bg' ];
+    const group = item.getContainer();
+    const childrens = group.get('children');
+    gGraph.setAutoPaint(false);
+    if (name === 'emptiness') {
+      if (value) {
+        childrens.forEach((shape) => {
+          if (hasOpacityClass.indexOf(shape.get('name')) > -1) {
+            return;
+          }
+          shape.attr('opacity', 0.4);
+        });
+      } else {
+        childrens.forEach((shape) => {
+          if (hasOpacityClass.indexOf(shape.get('name')) > -1) {
+            return;
+          }
+          shape.attr('opacity', 1);
+        });
+      }
+    }
+    gGraph.setAutoPaint(true);
+  }
+};
+
+/* 精简节点和复杂节点共用的一些方法 */
+const nodeCircleMethod = {
+  createNodeBox: function createNodeBox (group, config, radius, isRoot) {
+    /* 最外面的大矩形 */
+    const container = group.addShape('circle', {
+      attrs: {
+        x: 0,
+        y: 0,
+        r: radius
+      },
+      name: 'container-rect-shape'
+    });
+    /* 矩形 */
+    group.addShape('circle', {
+      attrs: {
+        x: 3,
+        y: 0,
+        r: radius,
+        fill: config.bgColor,
+        stroke: config.borderColor,
+        radius: 2
+      },
+      name: 'rect-shape'
+    });
+
+    return container;
+  },
+  /* 生成树上的 marker */
+  createNodeMarker: function createNodeMarker (group, collapsed, x, y) {
+    group.addShape('circle', {
+      attrs: {
+        x,
+        y,
+        r: 24,
+        fill: 'rgba(47, 84, 235, 0.05)',
+        opacity: 0,
+        zIndex: -2
+      },
+      name: 'collapse-icon-bg'
+    });
+    group.addShape('marker', {
+      attrs: {
+        x,
+        y,
+        r: 18,
+        symbol: collapsed ? EXPAND_ICON : COLLAPSE_ICON,
+        stroke: 'rgba(0,0,0,0.25)',
+        fill: 'rgba(0,0,0,0.1)',
+        lineWidth: 1,
+        cursor: 'pointer'
+      },
+      name: 'collapse-icon'
+    });
+  },
+  afterDraw: function afterDraw (cfg, group) {
+    /* 操作 marker 的背景色显示隐藏 */
+    const icon = group.find(element => element.get('name') === 'collapse-icon');
+    if (icon) {
+      const bg = group.find(element => element.get('name') === 'collapse-icon-bg');
+      icon.on('mouseenter', function () {
+        bg.attr('opacity', 1);
+        gGraph.get('canvas').draw();
+      });
+      icon.on('mouseleave', function () {
+        bg.attr('opacity', 0);
+        gGraph.get('canvas').draw();
+      });
+    }
+  },
+  setState: function setState (name, value, item) {
+    const hasOpacityClass = [ 'collapse-icon-bg' ];
+    const group = item.getContainer();
+    const childrens = group.get('children');
+    gGraph.setAutoPaint(false);
+    if (name === 'emptiness') {
+      if (value) {
+        childrens.forEach((shape) => {
+          if (hasOpacityClass.indexOf(shape.get('name')) > -1) {
+            return;
+          }
+          shape.attr('opacity', 0.4);
+        });
+      } else {
+        childrens.forEach((shape) => {
+          if (hasOpacityClass.indexOf(shape.get('name')) > -1) {
+            return;
+          }
+          shape.attr('opacity', 1);
+        });
+      }
+    }
+    gGraph.setAutoPaint(true);
+  }
+};
+
+/* 复杂节点 */
+G6.registerNode(TREE_NODE, {
+  drawShape: function drawShape (cfg, group) {
+    const config = getNodeConfig(cfg);
+    const isRoot = cfg.type === 'root';
+    const data = cfg;
+    const { nodeError } = data;
+    /* 最外面的大矩形 */
+    let container = null;
+    let isVirNode = !(data.lv === 'sys' || data.lv === 'node');
+
+    if (isVirNode) {
+      container = nodeCircleMethod.createNodeBox(group, config, 24, isRoot);
+    } else {
+      container = nodeBasicMethod.createNodeBox(group, config, 243, 64, isRoot);
+    }
+
+    if (data.dataType !== 'root') {
+      /* 上边的 type */
+      if (isVirNode) {
+        group.addShape('text', {
+          attrs: {
+            text: data.id + `(${data.cnt})`,
+            x: -12,
+            y: -34,
+            fontSize: 14,
+            textAlign: 'left',
+            textBaseline: 'middle',
+            fontWeight: 700,
+            fill: config.fontColor
+          },
+          name: 'type-text-shape'
+        });
+      } else {
+        group.addShape('text', {
+          attrs: {
+            text: data.lv,
+            x: 3,
+            y: -10,
+            fontSize: 12,
+            textAlign: 'left',
+            textBaseline: 'middle',
+            fill: 'rgba(0,0,0,0.65)'
+          },
+          name: 'type-text-shape'
+        });
+      }
+    }
+
+    if (!isVirNode) {
+      /* name */
+      group.addShape('text', {
+        attrs: {
+          /* 根据 IP 的长度计算出 剩下的 留给 name 的长度！ */
+          text: data.id + (data.cnt ? ` ( ${data.cnt} )` : ''), // data.id,
+          x: 19,
+          y: 19,
+          fontSize: 14,
+          fontWeight: 700,
+          textAlign: 'left',
+          textBaseline: 'middle',
+          fill: config.fontColor,
+          cursor: 'pointer'
+        },
+        name: 'name-text-shape'
+      });
+
+      /* 下面的文字 */
+      group.addShape('text', {
+        attrs: {
+          text: data.keyInfo,
+          x: 19,
+          y: 45,
+          fontSize: 14,
+          textAlign: 'left',
+          textBaseline: 'middle',
+          fill: config.fontColor,
+          cursor: 'pointer'
+        },
+        name: 'bottom-text-shape'
+      });
+    }
+
+    const hasChildren = cfg.children && cfg.children.length > 0;
+    if (hasChildren) {
+      if (isVirNode) {
+        nodeCircleMethod.createNodeMarker(group, cfg.collapsed, 4, 0);
+      } else {
+        nodeBasicMethod.createNodeMarker(group, cfg.collapsed, 236, 32);
+      }
+    }
+    return container;
+  },
+  afterDraw: nodeBasicMethod.afterDraw,
+  setState: nodeBasicMethod.setState
+}, 'single-node');
+/* 是否显示 sofarouter，通过透明度来控制 */
+G6.registerEdge('tree-edge', {
+  draw: function draw (cfg, group) {
+    const targetNode = cfg.targetNode.getModel();
+    const edgeError = !!targetNode.edgeError;
+
+    const { startPoint, endPoint } = cfg;
+    const controlPoints = this.getControlPoints(cfg);
+    let points = [ startPoint ]; // 添加起始点
+    // 添加控制点
+    if (controlPoints) {
+      points = points.concat(controlPoints);
+    }
+    // 添加结束点
+    points.push(endPoint);
+    const path = this.getPath(points);
+
+    group.addShape('path', {
+      attrs: {
+        path,
+        lineWidth: 12,
+        stroke: edgeError ? 'rgba(245,34,45,0.05)' : 'rgba(47,84,235,0.05)',
+        opacity: 0,
+        zIndex: 0
+      },
+      name: 'line-bg'
+    });
+    const keyShape = group.addShape('path', {
+      attrs: {
+        path,
+        lineWidth: 1,
+        stroke: edgeError ? '#FF7875' : 'rgba(0,0,0,0.25)',
+        zIndex: 1,
+        lineAppendWidth: 12
+      },
+      edgeError: !!edgeError,
+      name: 'path-shape'
+    });
+
+    /* 连接线的中间点 */
+    const centerPoint = {
+      x: startPoint.x + (endPoint.x - startPoint.x) / 2,
+      y: startPoint.y + (endPoint.y - startPoint.y) / 2
+    };
+
+    return keyShape;
+  },
+
+  /* 操作 线 的背景色显示隐藏 */
+  afterDraw: function afterDraw (cfg, group) {
+    /* 背景色 */
+    const lineBG = group.get('children')[0]; // 顺序根据 draw 时确定
+    /* 线条 */
+    const line = group.get('children')[1];
+    line.on('mouseenter', function () {
+      lineBG.attr('opacity', '1');
+      /* 线条如果在没有错误的情况下，在 hover 时候，是需要变成蓝色的 */
+      if (!line.get('edgeError')) {
+        line.attr('stroke', '#2F54EB');
+      }
+      gGraph.get('canvas').draw();
+    });
+    line.on('mouseleave', function () {
+      lineBG.attr('opacity', '0');
+      if (!line.get('edgeError')) {
+        line.attr('stroke', 'rgba(0,0,0,0.25)');
+      }
+      gGraph.get('canvas').draw();
+    });
+  },
+  setState: function setState (name, value, item) {
+    const group = item.getContainer();
+    const childrens = group.get('children');
+    gGraph.setAutoPaint(true);
+    if (name === 'emptiness') {
+      if (value) {
+        childrens.forEach(function (shape) {
+          if (shape.get('name') === 'line-bg') {
+            return;
+          }
+          shape.attr('opacity', 0.4);
+        });
+      } else {
+        childrens.forEach(function (shape) {
+          if (shape.get('name') === 'line-bg') {
+            return;
+          }
+          shape.attr('opacity', 1);
+        });
+      }
+    }
+    gGraph.setAutoPaint(true);
+  },
+  update: null
+}, 'cubic-horizontal');
+
 export default {
   name: 'Workplace',
   components: {
@@ -92,7 +552,8 @@ export default {
       sysColumns,
       nodeColums,
       servers: [],
-      filter: ['']
+      filter: [''],
+      graph: null
     };
   },
   computed: {
@@ -126,22 +587,49 @@ export default {
       return ret;
     },
     gData () {
-      let data = { id: 'sex', children: [], descr: '', cnt: 1 };
+      let data = { id: 'sex',
+        children: [],
+        descr: '',
+        cnt: 1,
+        lv: 'root',
+        keyInfo: 'sex-pomelo'
+      };
       let o = this.$store.getters.sexpSystemMap;
+
       for (let sys in o) {
         let it = o[sys];
-        let msg = `memfree: ${it.freemem}`;
-        let nSys = { id: it.hostname, descr: msg, cnt: Object.keys(it.nodes).length, lv: 'sys' };
+
+        let free = parseInt((it.freemem / 1024 / 1024));
+        let rat = it['free/total'].toFixed(2);
+        let msg = `mem ${free}M (${rat}) cpu ${it.cpu_idle}`;
+        let nSys = { id: it.ip,
+          descr: msg,
+          cnt: Object.keys(it.nodes).length,
+          lv: 'sys',
+          ip: it.ip,
+          keyInfo: msg,
+          orgi: it
+        };
 
         let types = {};
         for (let i in it.nodes) {
           let v = it.nodes[i];
 
-          let msg = `memAvg: ${v.memAvg}`;
-          let node = { id: v.serverId, descr: msg, lv: 'node' };
+          let msg = `port ${v.port} uptime ${v.uptime}`;
+          let node = { id: v.serverId,
+            descr: msg,
+            lv: 'node',
+            keyInfo: msg,
+            orgi: v
+          };
 
           if (types[v.serverType] === undefined) {
-            types[v.serverType] = { id: v.serverType, descr: '', children: [node], lv: 'node', cnt: 1 };
+            types[v.serverType] = { id: v.serverType,
+              descr: '',
+              children: [node],
+              lv: 'type',
+              cnt: 1,
+              keyInfo: '' };
           } else {
             types[v.serverType].children.push(node);
             types[v.serverType].cnt++;
@@ -149,8 +637,15 @@ export default {
         }
 
         let nodes = [];
+        let showType = false;
         for (let i in types) {
-          nodes.push(types[i]);
+          if (showType) {
+            nodes.push(types[i]);
+          } else {
+            for (let node of types[i].children) {
+              nodes.push(node);
+            }
+          }
         }
 
         nSys.children = nodes;
@@ -162,7 +657,6 @@ export default {
   created () {
     this.setSexpContext('all');
     this.getServiceList();
-    console.log(this.gData);
   },
   mounted () {
     this.createGraphics();
@@ -183,95 +677,112 @@ export default {
         container: 'container',
         width,
         height,
-        linkCenter: true,
+        zoom: 0.2,
         modes: {
-          default: ['drag-canvas', 'zoom-canvas',
-            {
-              type: 'collapse-expand',
-              onChange: function onChange (item, collapsed) {
-                const data = item.getModel();
-                data.collapsed = collapsed;
-                return true;
+          default: [{
+            type: 'collapse-expand',
+            shouldUpdate: function shouldUpdate (e) {
+              /* 点击 node 禁止展开收缩 */
+              if (e.target.get('name') !== 'collapse-icon') {
+                return false;
+              }
+              return true;
+            },
+            onChange: function onChange (item, collapsed) {
+              selectedItem = item;
+              const icon = item.get('group').find(element => element.get('name') === 'collapse-icon');
+
+              if (collapsed) {
+                icon.attr('symbol', EXPAND_ICON);
+              } else {
+                icon.attr('symbol', COLLAPSE_ICON);
               }
             },
-            {
-              type: 'tooltip',
-              formatText: function formatText (model) {
-                const text = '' + model.descr;
-                return text;
+            animate: {
+              callback: function callback () {
+                graph.focusItem(selectedItem);
               }
             }
-          ]
-        },
-        nodeStateStyles: {
-          // 鼠标hover状态下的配置
-          hover: {
-            fillOpacity: 0.8
           },
-          // 选中节点状态下的配置
-          selected: {
-            lineWidth: 5
-          }
+          {
+            type: 'tooltip',
+            formatText: function formatText (data) {
+              if (data.lv === 'sys') {
+                let a = '<div><ul>';
+                for (let key in data.orgi) {
+                  switch (key) {
+                  case 'nodes':
+                  case 'm_1':
+                  case 'm_5':
+                  case 'm_15':
+                    break;
+                  default:a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
+                  }
+                }
+                return a + '</ul></div>';
+              } else if (data.lv === 'node') {
+                let a = '<div><ul>';
+                for (let key in data.orgi) {
+                  a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
+                }
+                return a + '</ul></div>';
+              } else {
+                return `<div>${data.id}</div>`;
+              }
+            }
+          },
+          'drag-canvas', 'zoom-canvas' ]
         },
         defaultNode: {
-          // type: 'rect',
-          size: 16,
-          style: {
-            fill: '#C6E5FF',
-            stroke: '#5B8FF9'
-          }
+          type: TREE_NODE,
+          anchorPoints: [[ 0, 0.5 ], [ 1, 0.5 ]]
         },
         defaultEdge: {
+          type: 'tree-edge',
           style: {
             stroke: '#A3B1BF'
           }
         },
         layout: {
-          type: 'dendrogram',
+          type: 'dendrogram', // 'compactBox',
           direction: 'LR',
-          nodeSep: 20,
-          rankSep: 100,
+          getId: d => d.id,
+          getWidth: () => 243,
+          getVGap: () => 24,
+          getHGap: () => 50,
           radial: true
         }
-        // layout: {
-        //   type: 'compactBox',
-        //   direction: 'LR',
-        //   getId: function getId (d) {
-        //     return d.id;
-        //   },
-        //   getHeight: function getHeight () {
-        //     return 16;
-        //   },
-        //   getWidth: function getWidth () {
-        //     return 16;
-        //   },
-        //   getVGap: function getVGap () {
-        //     return 10;
-        //   },
-        //   getHGap: function getHGap () {
-        //     return 100;
-        //   }
-        // }
       });
 
-      graph.node(function (node) {
-        let label = node.id;
-        if (node.cnt !== undefined) {
-          label += `(${node.cnt})`;
-        }
-
-        return {
-          label,
-          labelCfg: {
-            offset: 10,
-            position: node.children && node.children.length > 0 ? 'left' : 'right'
+      graph.on('beforepaint', () => {
+        const topLeft = graph.getPointByCanvas(0, 0);
+        const bottomRight = graph.getPointByCanvas(1000, 600);
+        graph.getNodes().forEach(node => {
+          const model = node.getModel();
+          if (model.x < topLeft.x - 200 || model.x > bottomRight.x || model.y < topLeft.y || model.y > bottomRight.y) {
+            node.getContainer().hide();
+          } else {
+            node.getContainer().show();
           }
-        };
+        });
+        const edges = graph.getEdges();
+        edges.forEach(edge => {
+          const sourceNode = edge.get('sourceNode');
+          const targetNode = edge.get('targetNode');
+          if (!sourceNode.get('visible') && !targetNode.get('visible')) {
+            edge.hide();
+          } else {
+            edge.show();
+          }
+        });
       });
-
+      /// /////
       graph.data(this.gData);
       graph.render();
       graph.fitView();
+      // graph.zoom(0.5);
+      this.graph = graph;
+      gGraph = graph;
     }
   }
 };
@@ -287,5 +798,8 @@ export default {
     padding: 10px 8px;
     box-shadow: rgb(174, 174, 174) 0px 0px 10px;
   }
+
+li{ list-style: none;}
+ul{margin:0px;padding:0px}
 
 </style>
