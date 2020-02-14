@@ -1,5 +1,6 @@
 
 import { axios } from '@/utils/request';
+import Vue from 'vue';
 
 const sexp = {
   state: {
@@ -71,9 +72,88 @@ const sexp = {
                 ser[prop] = sInfo[prop];
               }
             }
+            ser.runStatus = true;
           }
         }
       }
+    },
+    ADD_SERVERS: (state, servers) => {
+      let system = state.systemInfoMap;
+      let nodeHostMap = state.nodeHostMap;
+      let ipHostMap = state.ipHostMap;
+
+      for (let server of servers) {
+        let serId = server.serverId;
+        let sInfo = server;
+        let sysName = ipHostMap[sInfo.host];
+
+        let newNode = {
+          time: '2010-4-5 05:59:15 AM',
+          serverId: sInfo.serverId,
+          serverType: sInfo.serverType,
+          pid: -1,
+          cpuAvg: 0,
+          memAvg: 0,
+          vsz: 0,
+          rss: 0,
+          usr: 0,
+          sys: 0,
+          gue: 0,
+          host: sInfo.host,
+          port: sInfo.port,
+          clientPort: sInfo.clientPort,
+          frontend: sInfo.frontend,
+          uptime: 0,
+          heapUsed: 0,
+          runStatus: false
+        };
+
+        if (sysName === undefined) {
+          let ob = {
+            Time: '2010-4-5 05:59:15 AM',
+            hostname: sInfo.host,
+            cpu_user: -1,
+            cpu_nice: -1,
+            cpu_system: -1,
+            cpu_iowait: -1,
+            cpu_steal: -1,
+            cpu_idle: -1,
+            tps: -1,
+            kb_read: -1,
+            kb_wrtn: -1,
+            kb_read_per: -1,
+            kb_wrtn_per: -1,
+            totalmem: -1,
+            freemem: -1,
+            'free/total': 0,
+            m_1: 0,
+            m_5: 0,
+            m_15: 0,
+            ip: sInfo.host,
+            nodes: {}
+          };
+
+          ob.nodes[ serId ] = newNode;
+          // system[ob.hostname] = ob;
+          Vue.set(system, ob.hostname, ob);
+
+          Vue.set(ipHostMap, sInfo.host, ob.hostname);
+          Vue.set(nodeHostMap, sInfo.serverId, ob.hostname);
+          sysName = ob.hostname;
+          // state.systemInfo[ob.hostname] = ob;
+          Vue.set(state.systemInfo, ob.hostname, ob);
+          Vue.set(state.nodeInfo, sInfo.serverId, newNode);
+          Vue.set(state.servers, sInfo.serverId, newNode);
+        } else {
+          Vue.set(state.systemInfoMap[ sysName ].nodes, sInfo.serverId, newNode);
+
+          Vue.set(state.nodeInfo, sInfo.serverId, newNode);
+          Vue.set(state.servers, sInfo.serverId, newNode);
+          Vue.set(nodeHostMap, sInfo.serverId, sysName);
+        }
+      }
+
+      state.systemInfoMap = { ...state.systemInfoMap };
     }
   },
   actions: {
@@ -109,13 +189,27 @@ const sexp = {
       if (resp.status === 'success') {
         commit('SET_SERVERS', resp.data);
       }
+    },
+    async AddServer ({ commit }, servers) {
+      if (servers instanceof Array) {
+        commit('ADD_SERVERS', servers);
+      } else {
+        commit('ADD_SERVERS', [servers]);
+      }
     }
   },
   getters: {
     sexpSystemInfo: state => state.systemInfo,
     sexpNodeInfo: state => state.nodeInfo,
     sexpServers: state => state.servers,
-    sexpSystemMap: state => state.systemInfoMap
+    sexpSystemMap: state => state.systemInfoMap,
+    sexpSystem: state => (id) => {
+      return state.systemInfoMap[ state.ipHostMap[ id ] ];
+    },
+    sexpNode: state => (id) => {
+      console.log(id, state.servers);
+      return state.servers[ id ];
+    }
   }
 };
 

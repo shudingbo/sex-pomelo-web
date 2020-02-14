@@ -84,7 +84,7 @@ export default {
       let servers = this.$store.getters.sexpServers;
       for (let key in servers) {
         let info = servers[key];
-        info.runStatus = true;
+        // info.runStatus = true;
         this.servers.push(info);
       }
     },
@@ -96,7 +96,7 @@ export default {
         params: { cmd: `stop ${serverId}` }
       });
       if (ret.status === 'success') {
-        serverInfo.runStatus = false;
+        // serverInfo.runStatus = false;
       }
 
       this.axiosMsg(ret);

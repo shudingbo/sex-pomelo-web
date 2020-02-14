@@ -1,17 +1,48 @@
 <template>
   <div>
-    <a-tabs defaultActiveKey="sysG">
-      <a-tab-pane tab="Graphics" key="sysG" forceRender>
-        <div>
-          <div style=" ">
 
-            <a-switch checkedChildren="show serverType" unCheckedChildren="hide serverType" defaultChecked @change="handleShowChange"/>
-            <!--<a-button type="primary" size="small">Primary</a-button>-->
-          </div>
-          <div id="container" />
+    <a-tabs defaultActiveKey="sysG">
+      <template slot="tabBarExtraContent">
+        <a-button icon="plus" @click="dlgAddVisable=true">Add server</a-button>
+      </template>
+      <a-tab-pane tab="Graphics" key="sysG" forceRender>
+        <div style="float:right;positios:fixed;top:0;right:680">
+
         </div>
+        <a-row>
+          <a-col :span="20">
+            <div>
+              <div>
+                <a-switch checkedChildren="show serverType" unCheckedChildren="hide serverType" defaultUnChecked @change="handleShowChange"/>
+                <!--<a-button type="primary" size="small">Primary</a-button>-->
+              </div>
+              <div id="container" />
+            </div>
+          </a-col>
+          <a-col :span="4">
+            <div v-if="curSelNode !== null">
+              <ul style="font-size:10px">
+                <li v-for="(val,key) in curSelNode" :key="key">
+                  <span v-if="typeof(val) !== 'object'">
+                    <template v-if="typeof(val) === 'number'">
+                      <template v-if="Number.isInteger(val)">
+                        <a-tag>{{key}}</a-tag>{{val}}
+                      </template>
+                      <template v-else>
+                        <a-tag>{{key}}</a-tag>{{val.toFixed(2)}}
+                      </template>
+                    </template>
+                    <template v-else>
+                      <a-tag>{{key}}</a-tag>{{val}}
+                    </template>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </a-col>
+        </a-row>
       </a-tab-pane>
-      <a-tab-pane tab="Table" key="sysT">ial
+      <a-tab-pane tab="Table" key="sysT">
         <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="hostname" size="small">
             <a-badge slot="slHost" slot-scope="text,record" :count="record.nodes.length" :numberStyle="{backgroundColor: '#52c41a'}">
               <a-tag href="javascript:;">{{text}}</a-tag>
@@ -34,6 +65,29 @@
         </a-table>
       </a-tab-pane>
     </a-tabs>
+
+    <a-modal :visible="dlgAddVisable" title="Add Server" @ok="addServer"  @cancel="()=>{dlgAddVisable=false}">
+      <a-form-item  label="serverId" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
+        <a-input v-model='addSer.serverId' placeholder="Server Id"></a-input>
+      </a-form-item>
+      <a-form-item  label="serverType" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
+        <a-input v-model='addSer.serverType' placeholder="Server type"></a-input>
+      </a-form-item>
+      <a-form-item  label="host" :label-col="formTailLayout.labelCol"  :wrapper-col="formTailLayout.wrapperCol">
+        <a-input v-model="addSer.host" placeholder="IP address"></a-input>
+      </a-form-item>
+      <a-form-item  label="port" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
+        <a-input-number v-model="addSer.port" :min='1000'>
+        </a-input-number>
+      </a-form-item>
+      <a-form-item label="frontend" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
+        <a-switch :value="addSer.frontend" checkedChildren="frontend" unCheckedChildren="backend"></a-switch>
+      </a-form-item>
+      <a-form-item v-if="addSer.frontend"  label="clientPort" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
+        <a-input-number v-model="addSer.clientPort" :min='1000'>
+        </a-input-number>
+      </a-form-item>
+    </a-modal>
   </div>
 </template>
 
@@ -106,11 +160,12 @@ const getNodeConfig = function getNodeConfig (node) {
   const cfgYellow = { basicColor: '#FA8C16', fontColor: '#FA8C16', borderColor: '#FA8C16', bgColor: '#FCF4E3' };
   const cfgGreen = { basicColor: '#52C41A', fontColor: '#52C41A', borderColor: '#52C41A', bgColor: '#F4FCEB' };
   const cfgRed = { basicColor: '#F5222D', fontColor: '#FFF', borderColor: '#F5222D', bgColor: '#E66A6C' };
+
   switch (node.lv) {
   case 'sys':
     return (node.orgi['free/total'] < 0.4 || node.orgi.cpu_idle < 50) ? cfgYellow : cfgBlue;
   case 'node':
-    if (typeof (node.orgi.pid) === 'number') { // node is run
+    if (node.orgi.runStatus === true) { // node is run
       return (node.orgi.frontend) ? cfgPurple : cfgGreen;
     } else {
       return cfgGray;
@@ -539,6 +594,15 @@ G6.registerEdge('tree-edge', {
   update: null
 }, 'cubic-horizontal');
 
+const formItemLayout = {
+  labelCol: { span: 7 },
+  wrapperCol: { span: 8 }
+};
+const formTailLayout = {
+  labelCol: { span: 7 },
+  wrapperCol: { span: 8, offset: 4 }
+};
+
 export default {
   name: 'Workplace',
   components: {
@@ -551,16 +615,26 @@ export default {
       servers: [],
       filter: [''],
       graph: null,
-      showType: true
+      showType: false,
+      formItemLayout,
+      formTailLayout,
+      dlgAddVisable: false,
+      addSer: {
+        serverId: 'aaa-1',
+        serverType: 'aaa',
+        host: '127.0.0.1',
+        port: 10000,
+        frontend: false,
+        clientPort: 0
+      },
+      curSelNode: null
     };
   },
   computed: {
-    sysMap () {
-      return this.$store.getters.sexpSystemMap;
-    },
     sysMapArr () {
-      let ret = [];
       let o = this.$store.getters.sexpSystemMap;
+
+      let ret = [];
       for (let sys in o) {
         let it = o[sys];
         let nodes = [];
@@ -664,19 +738,18 @@ export default {
       let servers = this.$store.getters.sexpServers;
       for (let key in servers) {
         let info = servers[key];
-        info.runStatus = true;
         this.servers.push(info);
       }
     },
     createGraphics () {
       const width = document.getElementById('container').scrollWidth;
-      const height = document.getElementById('container').scrollHeight || 500;
+      const height = document.getElementById('container').scrollHeight || 560;
       let self = this;
       const graph = new G6.TreeGraph({
         container: 'container',
         width,
         height,
-        zoom: 0.2,
+        zoom: 1,
         modes: {
           default: [{
             type: 'collapse-expand',
@@ -710,19 +783,26 @@ export default {
                 let a = '<div><ul>';
                 for (let key in data.orgi) {
                   switch (key) {
-                  case 'nodes':
-                  case 'm_1':
-                  case 'm_5':
-                  case 'm_15':
+                  case 'Time':
+                  case 'hostname':
+                  // case 'm_5':
+                  // case 'm_15':
+                    a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
                     break;
-                  default:a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
+                  default: break;
                   }
                 }
                 return a + '</ul></div>';
               } else if (data.lv === 'node') {
                 let a = '<div><ul>';
                 for (let key in data.orgi) {
-                  a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
+                  switch (key) {
+                  case 'time':
+                  case 'uptime':
+                    a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
+                    break;
+                  default: break;
+                  }
                 }
                 return a + '</ul></div>';
               } else {
@@ -743,7 +823,7 @@ export default {
           }
         },
         layout: {
-          type: 'dendrogram', // 'compactBox',
+          type: 'compactBox', // 'compactBox',
           direction: 'LR',
           getId: d => d.id,
           getWidth: () => 243,
@@ -775,15 +855,80 @@ export default {
           }
         });
       });
+
+      graph.on('node:click', function (event) {
+        const { item } = event;
+        const shape = event.target;
+
+        console.log(item._cfg.model);
+        let data = item._cfg.model;
+
+        self.showNodeDetail(data.lv, data.id);
+        // if (shape.get('className') === INNER_CIRCLE_CLASS) {
+        //   // 如果点击是发生在节点里面的小圆上，则更新对应的label
+        //   graph.updateItem(item, {
+        //     label: '点击了圆',
+        //     labelCfg: {
+        //       style: {
+        //         fill: '#003a8c',
+        //         fontSize: 16
+        //       }
+        //     }
+        //   });
+        // }
+      });
       /// /////
-      graph.data(this.gData);
-      graph.render();
-      graph.fitView();
       this.graph = graph;
       gGraph = graph;
+      this.renderGraphics();
+    },
+    showNodeDetail (dataType, id) {
+      console.log('---', dataType, id);
+      let curSelInfo = null;
+      if (dataType === 'sys') {
+        curSelInfo = this.$store.getters.sexpSystem(id);
+      } else if (dataType === 'node') {
+        curSelInfo = this.$store.getters.sexpNode(id);
+      }
+      console.log(curSelInfo);
+      this.curSelNode = curSelInfo;
     },
     handleShowChange (checked) {
       this.showType = checked;
+      this.renderGraphics();
+    },
+    async addServer () {
+      let cfg = this.addSer;
+      if (typeof (cfg.serverId) !== 'string' || cfg.serverId.length < 3) {
+        this.$message.warn('serverId error');
+        return;
+      }
+
+      if (typeof (cfg.serverType) !== 'string' || cfg.serverType.length < 2) {
+        this.$message.warn('serverType error');
+        return;
+      }
+
+      if (cfg.serverId.indexOf(cfg.serverType) === -1) {
+        this.$message.warn('serverId must include serverType string. <serverType>-<some str>');
+        return;
+      }
+
+      if (typeof (cfg.host) !== 'string' || cfg.host.length < 7) {
+        this.$message.warn('host error');
+        return;
+      }
+
+      let curServers = this.$store.getters.sexpServers;
+      if (curServers[cfg.serverId] !== undefined) {
+        this.$message.warn(`Server ${cfg.serverId} has exits!`);
+        return;
+      }
+
+      await this.$store.dispatch('AddServer', cfg);
+      this.renderGraphics();
+    },
+    renderGraphics () {
       this.graph.data(this.gData);
       this.graph.render();
       this.graph.fitView();
