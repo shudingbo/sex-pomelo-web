@@ -3,18 +3,15 @@
     <a-tabs defaultActiveKey="sysG">
       <a-tab-pane tab="Graphics" key="sysG" forceRender>
         <div>
-          <div style="float:left;position:absolute; ">
-            <a-radio-group size="small">
-              <a-radio-button value="large">Large absolute</a-radio-button>
-              <a-radio-button value="default">Default</a-radio-button>
-              <a-radio-button value="small">Small</a-radio-button>
-            </a-radio-group>
-            <a-button type="primary" size="small">Primary</a-button>
+          <div style=" ">
+
+            <a-switch checkedChildren="show serverType" unCheckedChildren="hide serverType" defaultChecked @change="handleShowChange"/>
+            <!--<a-button type="primary" size="small">Primary</a-button>-->
           </div>
           <div id="container" />
         </div>
       </a-tab-pane>
-      <a-tab-pane tab="Table" key="sysT">
+      <a-tab-pane tab="Table" key="sysT">ial
         <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="hostname" size="small">
             <a-badge slot="slHost" slot-scope="text,record" :count="record.nodes.length" :numberStyle="{backgroundColor: '#52c41a'}">
               <a-tag href="javascript:;">{{text}}</a-tag>
@@ -553,7 +550,8 @@ export default {
       nodeColums,
       servers: [],
       filter: [''],
-      graph: null
+      graph: null,
+      showType: true
     };
   },
   computed: {
@@ -637,7 +635,7 @@ export default {
         }
 
         let nodes = [];
-        let showType = false;
+        let showType = this.showType;
         for (let i in types) {
           if (showType) {
             nodes.push(types[i]);
@@ -673,6 +671,7 @@ export default {
     createGraphics () {
       const width = document.getElementById('container').scrollWidth;
       const height = document.getElementById('container').scrollHeight || 500;
+      let self = this;
       const graph = new G6.TreeGraph({
         container: 'container',
         width,
@@ -780,9 +779,14 @@ export default {
       graph.data(this.gData);
       graph.render();
       graph.fitView();
-      // graph.zoom(0.5);
       this.graph = graph;
       gGraph = graph;
+    },
+    handleShowChange (checked) {
+      this.showType = checked;
+      this.graph.data(this.gData);
+      this.graph.render();
+      this.graph.fitView();
     }
   }
 };
