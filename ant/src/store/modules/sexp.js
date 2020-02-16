@@ -2,6 +2,55 @@
 import { axios } from '@/utils/request';
 import Vue from 'vue';
 
+function makeNode (sInfo) {
+  return {
+    time: '2010-4-5 05:59:15 AM',
+    serverId: sInfo.serverId,
+    serverType: sInfo.serverType,
+    pid: -1,
+    cpuAvg: 0,
+    memAvg: 0,
+    vsz: 0,
+    rss: 0,
+    usr: 0,
+    sys: 0,
+    gue: 0,
+    host: sInfo.host,
+    port: sInfo.port,
+    clientPort: sInfo.clientPort,
+    frontend: sInfo.frontend,
+    uptime: 0,
+    heapUsed: 0,
+    runStatus: false
+  };
+}
+
+function makeSys (host) {
+  return {
+    Time: '2010-4-5 05:59:15 AM',
+    hostname: host,
+    cpu_user: -1,
+    cpu_nice: -1,
+    cpu_system: -1,
+    cpu_iowait: -1,
+    cpu_steal: -1,
+    cpu_idle: -1,
+    tps: -1,
+    kb_read: -1,
+    kb_wrtn: -1,
+    kb_read_per: -1,
+    kb_wrtn_per: -1,
+    totalmem: -1,
+    freemem: -1,
+    'free/total': 0,
+    m_1: 0,
+    m_5: 0,
+    m_15: 0,
+    ip: host,
+    nodes: {}
+  };
+}
+
 const sexp = {
   state: {
     systemInfo: {},
@@ -58,22 +107,37 @@ const sexp = {
 
       for (let serId in servers) {
         let sInfo = servers[serId];
-        let ob = Object.assign({}, sInfo);
         let sysName = nodeHostMap[serId];
-        if ((sysName !== undefined) && (system[ sysName ] !== undefined)) {
-          let sysIt = system[ sysName ];
-          if ((sysIt !== undefined) && (sysIt.nodes[ serId ] !== undefined)) {
-            let ser = sysIt.nodes[ serId ];
-            ipHostMap[ sInfo.host ] = sysName;
-            sysIt.ip = sInfo.host;
-
-            for (let prop in sInfo) {
-              if (ser[prop] === undefined) {
-                ser[prop] = sInfo[prop];
-              }
-            }
-            ser.runStatus = true;
+        if (sysName === undefined) {
+          sysName = ipHostMap[sInfo.host];
+          if (sysName === undefined) {
+            let ob = makeSys(sInfo.host);
+            system[ob.hostname] = ob;
+            ipHostMap[sInfo.host] = ob.hostname;
+            nodeHostMap[sInfo.serverId] = ob.hostname;
+            sysName = ob.hostname;
+          } else {
+            nodeHostMap[serId] = sysName;
           }
+        }
+        let sysIt = system[ sysName ];
+        if ((sysIt !== undefined) && (sysIt.nodes[ serId ] !== undefined)) {
+          let ser = sysIt.nodes[ serId ];
+          ipHostMap[ sInfo.host ] = sysName;
+          sysIt.ip = sInfo.host;
+
+          for (let prop in sInfo) {
+            if (ser[prop] === undefined) {
+              ser[prop] = sInfo[prop];
+            }
+          }
+          if (ser.runStatus === undefined) {
+            ser.runStatus = false;
+          }
+        } else {
+          let newNode = makeNode(sInfo);
+          state.nodeInfo[sInfo.serverId] = newNode;
+          state.systemInfoMap[sysName].nodes[sInfo.serverId] = newNode;
         }
       }
     },
@@ -87,51 +151,10 @@ const sexp = {
         let sInfo = server;
         let sysName = ipHostMap[sInfo.host];
 
-        let newNode = {
-          time: '2010-4-5 05:59:15 AM',
-          serverId: sInfo.serverId,
-          serverType: sInfo.serverType,
-          pid: -1,
-          cpuAvg: 0,
-          memAvg: 0,
-          vsz: 0,
-          rss: 0,
-          usr: 0,
-          sys: 0,
-          gue: 0,
-          host: sInfo.host,
-          port: sInfo.port,
-          clientPort: sInfo.clientPort,
-          frontend: sInfo.frontend,
-          uptime: 0,
-          heapUsed: 0,
-          runStatus: false
-        };
+        let newNode = makeNode(sInfo);
 
         if (sysName === undefined) {
-          let ob = {
-            Time: '2010-4-5 05:59:15 AM',
-            hostname: sInfo.host,
-            cpu_user: -1,
-            cpu_nice: -1,
-            cpu_system: -1,
-            cpu_iowait: -1,
-            cpu_steal: -1,
-            cpu_idle: -1,
-            tps: -1,
-            kb_read: -1,
-            kb_wrtn: -1,
-            kb_read_per: -1,
-            kb_wrtn_per: -1,
-            totalmem: -1,
-            freemem: -1,
-            'free/total': 0,
-            m_1: 0,
-            m_5: 0,
-            m_15: 0,
-            ip: sInfo.host,
-            nodes: {}
-          };
+          let ob = makeSys(sInfo.host);
 
           ob.nodes[ serId ] = newNode;
           // system[ob.hostname] = ob;
@@ -181,9 +204,9 @@ const sexp = {
     },
     async GetServers ({ commit }, data) {
       const resp = await axios({
-        url: '/pomelo',
+        url: '/getAllServers',
         method: 'get',
-        params: { cmd: `show servers` }
+        params: { }
       });
 
       if (resp.status === 'success') {
@@ -207,8 +230,7 @@ const sexp = {
       return state.systemInfoMap[ state.ipHostMap[ id ] ];
     },
     sexpNode: state => (id) => {
-      console.log(id, state.servers);
-      return state.servers[ id ];
+      return state.systemInfoMap[ state.nodeHostMap[ id ] ].nodes[id];
     }
   }
 };

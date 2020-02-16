@@ -3,17 +3,32 @@
 
     <a-tabs defaultActiveKey="sysG">
       <template slot="tabBarExtraContent">
-        <a-button icon="plus" @click="dlgAddVisable=true">Add server</a-button>
+        <a-button icon="plus" @click="dlgAddVisable=true" type="primary" size="small" title="Add Server">Add</a-button>
+        <a-button icon="plus-square" style="margin-left:6px;" @click="dlgAddBatchVisable=true" type="dashed" size="small" title="Batch Add Server">Add Batch</a-button>
       </template>
       <a-tab-pane tab="Graphics" key="sysG" forceRender>
-        <div style="float:right;positios:fixed;top:0;right:680">
-
-        </div>
         <a-row>
           <a-col :span="20">
             <div>
               <div>
-                <a-switch checkedChildren="show serverType" unCheckedChildren="hide serverType" defaultUnChecked @change="handleShowChange"/>
+                <span>Type Node: </span>
+                <a-switch checkedChildren="show" unCheckedChildren="hide" defaultUnChecked @change="handleShowChange"/>
+                <span> ServerStatus: </span>
+                <a-radio-group :value="show.status" @change="handleShowStatusChange" size="small">
+                  <a-radio-button value="run">Run</a-radio-button>
+                  <a-radio-button value="all">All</a-radio-button>
+                  <a-radio-button value="stop">Stop</a-radio-button>
+                </a-radio-group>
+                <span> System : </span>
+                <a-select size="small" style="width: 120px" :defaultValue="''" showSearch :filterOption="filterOption" @change="handleSysChange" >
+                  <a-select-option key="-1" :value="''">All</a-select-option>
+                  <a-select-option v-for="i in systems" :key="i" :value="i">{{i}}</a-select-option>
+                </a-select>
+                <span> ServerType: </span>
+                <a-select size="small" style="width: 120px" :defaultValue="''" showSearch :filterOption="filterOption" @change="handleServerTypeChange" >
+                  <a-select-option key="-1" :value="''">All</a-select-option>
+                  <a-select-option v-for="i in serverTypes" :key="i" :value="i">{{i}}</a-select-option>
+                </a-select>
                 <!--<a-button type="primary" size="small">Primary</a-button>-->
               </div>
               <div id="container" />
@@ -21,6 +36,23 @@
           </a-col>
           <a-col :span="4">
             <div v-if="curSelNode !== null">
+              <h4 style="textAlign:center">{{(curSelNode.lv==='sys')?curSelNode.ip : curSelNode.serverId}}</h4>
+              <div style="margin:6px;">
+                <a-popconfirm
+                :title="`${(curSelNode.runStatus===true)?'Stop':'Start'} ${curSelNode.serverId}?`"
+                @confirm="() => (curSelNode.runStatus===true)?stopServer(curSelNode):startServer(curSelNode)"
+                >
+                  <a-button type="primary" size="small" shape="circle"
+                  :icon="(curSelNode.runStatus===true)?'poweroff':'caret-right'"
+                  :title="(curSelNode.runStatus===true)?'stop':'start'"
+                  ></a-button>
+                </a-popconfirm>
+                <a-popconfirm style="margin-left:6px;"  v-if="curSelNode.runStatus===false" :title="`Delete ${curSelNode.serverId}?`" @confirm="() => deleteServer(curSelNode)">
+                  <a-button type="danger" size="small" shape="circle" icon="close">
+                  </a-button>
+                </a-popconfirm>
+                <a-button style="margin-left:6px;" v-if="curSelNode.runStatus===false" type="dashed" size="small" shape="circle" icon="edit" @click="editServer(curSelNode)"></a-button>
+              </div>
               <ul style="font-size:10px">
                 <li v-for="(val,key) in curSelNode" :key="key">
                   <span v-if="typeof(val) !== 'object'">
@@ -87,6 +119,12 @@
         <a-input-number v-model="addSer.clientPort" :min='1000'>
         </a-input-number>
       </a-form-item>
+    </a-modal>
+    <a-modal :visible="dlgAddBatchVisable" title="Batch Add Server" @ok="addServerBatch"  @cancel="()=>{dlgAddBatchVisable=false}">
+      <a-textarea v-model="txtBatchAdd" :autosize="{ minRows: 3,maxRows:20 }"
+        placeholder="cp servers.json in text"
+      >
+      </a-textarea>
     </a-modal>
   </div>
 </template>
@@ -194,7 +232,7 @@ const nodeBasicMethod = {
       attrs: {
         x: 0,
         y: 0,
-        width,
+        width: width - 16,
         height
       },
       name: 'container-rect-shape'
@@ -615,7 +653,12 @@ export default {
       servers: [],
       filter: [''],
       graph: null,
-      showType: false,
+      show: {
+        serverTypeNode: false,
+        status: 'run', // all,显示所有服务器; run,只显示运行状态; stop,只显示停止状态
+        serverType: '',
+        sys: ''
+      },
       formItemLayout,
       formTailLayout,
       dlgAddVisable: false,
@@ -627,7 +670,9 @@ export default {
         frontend: false,
         clientPort: 0
       },
-      curSelNode: null
+      curSelNode: null,
+      dlgAddBatchVisable: false,
+      txtBatchAdd: ''
     };
   },
   computed: {
@@ -667,9 +712,13 @@ export default {
         keyInfo: 'sex-pomelo'
       };
       let o = this.$store.getters.sexpSystemMap;
+      let showStatus = this.show.status;
 
       for (let sys in o) {
         let it = o[sys];
+        if (this.show.sys.length > 0 && this.show.sys !== it.ip) {
+          continue;
+        }
 
         let free = parseInt((it.freemem / 1024 / 1024));
         let rat = it['free/total'].toFixed(2);
@@ -687,13 +736,32 @@ export default {
         for (let i in it.nodes) {
           let v = it.nodes[i];
 
-          let msg = `port ${v.port} uptime ${v.uptime}`;
+          let msg = `up ${parseFloat(v.uptime).toFixed(0)}m`;
+          let hasPort = false;
+          if (v.port !== undefined) {
+            msg += ` port ${v.port}`;
+            hasPort = true;
+          }
+          if (v.clientPort !== undefined && v.clientPort > 0) {
+            msg += hasPort ? ` ${v.clientPort}` : ` clientPort ${v.clientPort}`;
+          }
+
           let node = { id: v.serverId,
             descr: msg,
             lv: 'node',
             keyInfo: msg,
             orgi: v
           };
+
+          if (showStatus === 'run' && v.runStatus === false) {
+            continue;
+          } else if (showStatus === 'stop' && v.runStatus === true) {
+            continue;
+          }
+
+          if (this.show.serverType.length > 0 && this.show.serverType !== v.serverType) {
+            continue;
+          }
 
           if (types[v.serverType] === undefined) {
             types[v.serverType] = { id: v.serverType,
@@ -709,9 +777,9 @@ export default {
         }
 
         let nodes = [];
-        let showType = this.showType;
+        let serverTypeNode = this.show.serverTypeNode;
         for (let i in types) {
-          if (showType) {
+          if (serverTypeNode) {
             nodes.push(types[i]);
           } else {
             for (let node of types[i].children) {
@@ -724,6 +792,23 @@ export default {
         data.children.push(nSys);
       }
       return data;
+    },
+    serverTypes () {
+      let serverTypes = new Set();
+      let servers = this.$store.getters.sexpServers;
+      for (let key in servers) {
+        serverTypes.add(servers[key].serverType);
+      }
+
+      return [...serverTypes];
+    },
+    systems () {
+      let o = this.$store.getters.sexpSystemMap;
+      let ret = [];
+      for (let sys in o) {
+        ret.push(`${o[sys].ip}`);
+      }
+      return ret;
     }
   },
   created () {
@@ -737,8 +822,7 @@ export default {
     async getServiceList () {
       let servers = this.$store.getters.sexpServers;
       for (let key in servers) {
-        let info = servers[key];
-        this.servers.push(info);
+        this.servers.push(servers[key]);
       }
     },
     createGraphics () {
@@ -778,35 +862,24 @@ export default {
           },
           {
             type: 'tooltip',
-            formatText: function formatText (data) {
+            formatText: function (data, target) {
+              // console.log('target:', target);
+              let a = '<div style="padding: 8px 6px;"><ul>';
+
               if (data.lv === 'sys') {
-                let a = '<div><ul>';
-                for (let key in data.orgi) {
-                  switch (key) {
-                  case 'Time':
-                  case 'hostname':
-                  // case 'm_5':
-                  // case 'm_15':
-                    a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
-                    break;
-                  default: break;
-                  }
-                }
+                ['Time', 'hostname'].forEach((v, i) => {
+                  a += `<li><b>${v}</b>: ${data.orgi[v]}</li>`;
+                });
+
                 return a + '</ul></div>';
               } else if (data.lv === 'node') {
-                let a = '<div><ul>';
-                for (let key in data.orgi) {
-                  switch (key) {
-                  case 'time':
-                  case 'uptime':
-                    a += `<li><b>${key}</b>: ${data.orgi[key]}</li>`;
-                    break;
-                  default: break;
-                  }
-                }
+                ['time', 'uptime'].forEach((v, i) => {
+                  a += `<li><b>${v}</b>: ${data.orgi[v]}</li>`;
+                });
+
                 return a + '</ul></div>';
               } else {
-                return `<div>${data.id}</div>`;
+                return `<div style="display:none">${data.id}</div>`;
               }
             }
           },
@@ -823,7 +896,7 @@ export default {
           }
         },
         layout: {
-          type: 'compactBox', // 'compactBox',
+          type: 'compactBox', // 'compactBox','dendrogram'
           direction: 'LR',
           getId: d => d.id,
           getWidth: () => 243,
@@ -859,8 +932,6 @@ export default {
       graph.on('node:click', function (event) {
         const { item } = event;
         const shape = event.target;
-
-        console.log(item._cfg.model);
         let data = item._cfg.model;
 
         self.showNodeDetail(data.lv, data.id);
@@ -883,18 +954,37 @@ export default {
       this.renderGraphics();
     },
     showNodeDetail (dataType, id) {
-      console.log('---', dataType, id);
       let curSelInfo = null;
       if (dataType === 'sys') {
         curSelInfo = this.$store.getters.sexpSystem(id);
       } else if (dataType === 'node') {
         curSelInfo = this.$store.getters.sexpNode(id);
       }
-      console.log(curSelInfo);
+      if (curSelInfo !== null) {
+        curSelInfo.lv = dataType;
+      }
+      console.log('---curSelInfo:', curSelInfo);
       this.curSelNode = curSelInfo;
     },
     handleShowChange (checked) {
-      this.showType = checked;
+      this.show.serverTypeNode = checked;
+      this.renderGraphics();
+    },
+    handleShowStatusChange (e) {
+      this.show.status = e.target.value;
+      this.renderGraphics();
+    },
+    filterOption (input, option) {
+      return (
+        option.componentOptions.children[0].text.toLowerCase().indexOf(input.toLowerCase()) >= 0
+      );
+    },
+    handleServerTypeChange (value) {
+      this.show.serverType = value;
+      this.renderGraphics();
+    },
+    handleSysChange (value) {
+      this.show.sys = value;
       this.renderGraphics();
     },
     async addServer () {
@@ -925,13 +1015,100 @@ export default {
         return;
       }
 
-      await this.$store.dispatch('AddServer', cfg);
-      this.renderGraphics();
+      const resp = await axios({
+        url: '/regServer',
+        method: 'post',
+        data: cfg
+      });
+
+      if (resp.status === 'success') {
+        await this.$store.dispatch('AddServer', cfg);
+        this.renderGraphics();
+        this.dlgAddVisable = false;
+      }
+
+      this.$message[resp.status](resp.message);
     },
     renderGraphics () {
       this.graph.data(this.gData);
       this.graph.render();
       this.graph.fitView();
+    },
+    async addServerBatch () {
+      let cont = this.txtBatchAdd;
+      let addServers = {};
+      try {
+        let servers = JSON.parse(cont);
+        let hasServers = this.$store.getters.sexpServers;
+        let production = {};
+        for (let env in servers) {
+          if (env === 'production') {
+            production = servers[env];
+            continue;
+          }
+
+          for (let type in servers[env]) {
+            for (let ser of servers[env][type]) {
+              if (hasServers[ser.id] === undefined) {
+                let { id: serverId, host, port, clientPort, frontend } = ser;
+                addServers[ser.id] = {
+                  serverId, serverType: type, host, port, clientPort, frontend
+                };
+              }
+            }
+          }
+        }
+
+        for (let type in production) {
+          for (let ser of production[type]) {
+            if (hasServers[ser.id] === undefined) {
+              let { id: serverId, host, port, clientPort, frontend } = ser;
+              addServers[ser.id] = {
+                serverId, serverType: type, host, port, clientPort, frontend
+              };
+            }
+          }
+        }
+      } catch (err) {
+        this.$message.warn(err);
+        return;
+      }
+
+      if (Object.keys(addServers).length === 0) {
+        this.$message.warn('No Server should be add!');
+        return;
+      }
+
+      const resp = await axios({
+        url: '/regServerBatch',
+        method: 'post',
+        data: addServers
+      });
+
+      if (resp.status === 'success') {
+        let cfgs = [];
+
+        for (let it in resp.data) {
+          cfgs.push(JSON.parse(resp.data[it]));
+        }
+        await this.$store.dispatch('AddServer', cfgs);
+        this.renderGraphics();
+        this.dlgAddBatchVisable = false;
+      }
+
+      this.$message[resp.status](resp.message);
+    },
+    async stopServer (ser) {
+      console.log('stop ', ser.serverId);
+    },
+    async startServer (ser) {
+      console.log('start ', ser.serverId);
+    },
+    async deleteServer (ser) {
+      console.log('delete ', ser.serverId);
+    },
+    async editServer (ser) {
+      console.log('edit ', ser.serverId);
     }
   }
 };
@@ -944,7 +1121,6 @@ export default {
     font-size: 12px;
     color: #545454;
     background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px 8px;
     box-shadow: rgb(174, 174, 174) 0px 0px 10px;
   }
 
