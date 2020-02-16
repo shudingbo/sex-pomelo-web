@@ -49,6 +49,16 @@ class PomeloService extends Service {
     return ret;
   }
 
+  /** 从redis删除服务器
+   *
+   * @param {string} serverId 服务器ID
+   */
+  async unregServers(serverId) {
+    const ret = await this.app.redis.hdel(key_ServerList, serverId);
+    return ret;
+  }
+
+
   async getOlLineData(sTime, eTime) {
 
 

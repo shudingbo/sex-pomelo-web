@@ -10,4 +10,5 @@ module.exports = app => {
   router.get('/getAllServers', controller.home.getAllServers);
   router.post('/regServer', controller.home.regServer);
   router.post('/regServerBatch', controller.home.regServerBatch);
+  router.delete('/unregServer', controller.home.unregServer);
 };

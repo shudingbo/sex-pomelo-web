@@ -144,8 +144,18 @@ class HomeController extends Controller {
     }
 
     await this.service.pomelo.pomelo.regServers(data);
-
     ctx.success = { message: 'Add Success!', data };
+  }
+
+  async unregServer() {
+    const { ctx } = this;
+    const body = ctx.request.body;
+    const ret = await this.service.pomelo.pomelo.getRegServer(body.serverId);
+    if (ret !== null) {
+      await this.service.pomelo.pomelo.unregServers(body.serverId);
+    }
+
+    ctx.success = { message: `${body.serverId} Unreg Success!` };
 
   }
 

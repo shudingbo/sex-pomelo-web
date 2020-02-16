@@ -177,6 +177,74 @@ const sexp = {
       }
 
       state.systemInfoMap = { ...state.systemInfoMap };
+    },
+    UPDATE_SERVERS: (state, serverInfo) => {
+      let serverId = serverInfo.serverId;
+
+      let sysName = state.nodeHostMap[serverId];
+      if (sysName === undefined) {
+        console.warn('Not find');
+        return;
+      }
+
+      let curSysMap = state.systemInfoMap[sysName];
+      let curSerInfo = curSysMap.nodes[serverId];
+      let needMove = false; // node是否移动到其它sys
+      if ((serverInfo.host !== undefined) && (curSerInfo.host !== serverInfo.host)) {
+        needMove = true;
+      }
+
+      let sServers = state.servers[serverId];
+      let sNodeInfo = state.nodeInfo[serverId];
+      let sSysMap = curSysMap;
+      if (needMove === true) {
+        let sysName = state.ipHostMap[serverInfo.host];
+        if (sysName !== undefined) {
+          sSysMap = state.systemInfoMap[sysName];
+        } else {
+          let ob = makeSys(serverInfo.host);
+          state.systemInfoMap[ob.hostname] = ob;
+          state.ipHostMap[serverInfo.host] = ob.hostname;
+          state.nodeHostMap[serverId] = ob.hostname;
+          sysName = ob.hostname;
+          sSysMap = ob;
+        }
+      }
+
+      // 更新新的信息
+      for (let key in serverInfo) {
+        if (sNodeInfo[key] !== undefined) {
+          sNodeInfo[key] = serverInfo[key];
+        }
+        if (sServers[key] !== undefined) {
+          sServers[key] = serverInfo[key];
+        }
+        if (curSerInfo[key] !== undefined) {
+          curSerInfo[key] = serverInfo[key];
+        }
+      }
+      sSysMap.nodes[serverId] = curSerInfo;
+
+      // 移除老的信息
+      if (needMove === true) {
+        delete curSysMap.nodes[serverId];
+      }
+      //
+      state.systemInfoMap = { ...state.systemInfoMap };
+      console.log(state.systemInfoMap);
+    },
+    DELETE_SERVERS: (state, serverId) => {
+      let sysName = state.nodeHostMap[serverId];
+      if (sysName === undefined) {
+        console.warn('Not find');
+        return;
+      }
+      let curSysMap = state.systemInfoMap[sysName];
+      delete curSysMap.nodes[serverId];
+      delete state.servers[serverId];
+      delete state.nodeInfo[serverId];
+
+      state.systemInfoMap = { ...state.systemInfoMap };
     }
   },
   actions: {
@@ -219,6 +287,28 @@ const sexp = {
       } else {
         commit('ADD_SERVERS', [servers]);
       }
+    },
+    async StopServer ({ commit }, serverId) {
+      commit('UPDATE_SERVERS', { serverId, runStatus: false });
+    },
+    async StartServer ({ commit }, serverId) {
+      commit('UPDATE_SERVERS', { serverId, runStatus: true });
+    },
+    async UpdateServer ({ commit }, serverInfo) {
+      commit('UPDATE_SERVERS', serverInfo);
+    },
+    async DeleteServer ({ commit }, serverId) {
+      const resp = await axios({
+        url: '/unregServer',
+        method: 'delete',
+        data: { serverId }
+      });
+
+      if (resp.status === 'success') {
+        commit('DELETE_SERVERS', serverId);
+      }
+
+      return resp;
     }
   },
   getters: {

@@ -3,7 +3,7 @@
 
     <a-tabs defaultActiveKey="sysG">
       <template slot="tabBarExtraContent">
-        <a-button icon="plus" @click="dlgAddVisable=true" type="primary" size="small" title="Add Server">Add</a-button>
+        <a-button icon="plus" @click="dlgAddVisable=true;dlgAddEdit=true;" type="primary" size="small" title="Add Server">Add</a-button>
         <a-button icon="plus-square" style="margin-left:6px;" @click="dlgAddBatchVisable=true" type="dashed" size="small" title="Batch Add Server">Add Batch</a-button>
       </template>
       <a-tab-pane tab="Graphics" key="sysG" forceRender>
@@ -11,7 +11,11 @@
           <a-col :span="20">
             <div>
               <div>
-                <span>Type Node: </span>
+                <span>Layout: </span>
+                <a-select size="small" style="width: 100px" :defaultValue="'radial'"  @change="handleLayoutChange" >
+                  <a-select-option v-for="(v,k) in layout" :key="k" :value="k">{{k}}</a-select-option>
+                </a-select>
+                <span> Type Node: </span>
                 <a-switch checkedChildren="show" unCheckedChildren="hide" defaultUnChecked @change="handleShowChange"/>
                 <span> ServerStatus: </span>
                 <a-radio-group :value="show.status" @change="handleShowStatusChange" size="small">
@@ -20,7 +24,7 @@
                   <a-radio-button value="stop">Stop</a-radio-button>
                 </a-radio-group>
                 <span> System : </span>
-                <a-select size="small" style="width: 120px" :defaultValue="''" showSearch :filterOption="filterOption" @change="handleSysChange" >
+                <a-select size="small" style="width: 100px" :defaultValue="''" showSearch :filterOption="filterOption" @change="handleSysChange" >
                   <a-select-option key="-1" :value="''">All</a-select-option>
                   <a-select-option v-for="i in systems" :key="i" :value="i">{{i}}</a-select-option>
                 </a-select>
@@ -37,7 +41,7 @@
           <a-col :span="4">
             <div v-if="curSelNode !== null">
               <h4 style="textAlign:center">{{(curSelNode.lv==='sys')?curSelNode.ip : curSelNode.serverId}}</h4>
-              <div style="margin:6px;">
+              <div style="margin:6px;" v-if="curSelNode.lv==='node'">
                 <a-popconfirm
                 :title="`${(curSelNode.runStatus===true)?'Stop':'Start'} ${curSelNode.serverId}?`"
                 @confirm="() => (curSelNode.runStatus===true)?stopServer(curSelNode):startServer(curSelNode)"
@@ -51,7 +55,7 @@
                   <a-button type="danger" size="small" shape="circle" icon="close">
                   </a-button>
                 </a-popconfirm>
-                <a-button style="margin-left:6px;" v-if="curSelNode.runStatus===false" type="dashed" size="small" shape="circle" icon="edit" @click="editServer(curSelNode)"></a-button>
+                <a-button style="margin-left:6px;" v-if="curSelNode.runStatus===false" type="dashed" size="small" shape="circle" icon="edit" @click="showEditDlg(curSelNode)"></a-button>
               </div>
               <ul style="font-size:10px">
                 <li v-for="(val,key) in curSelNode" :key="key">
@@ -98,12 +102,12 @@
       </a-tab-pane>
     </a-tabs>
 
-    <a-modal :visible="dlgAddVisable" title="Add Server" @ok="addServer"  @cancel="()=>{dlgAddVisable=false}">
+    <a-modal :visible="dlgAddVisable" title="Add Server" @ok="onHandlerDlgOk"  @cancel="()=>{dlgAddVisable=false}">
       <a-form-item  label="serverId" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
-        <a-input v-model='addSer.serverId' placeholder="Server Id"></a-input>
+        <a-input v-model='addSer.serverId' placeholder="Server Id" :disabled="!dlgAddEdit"></a-input>
       </a-form-item>
       <a-form-item  label="serverType" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
-        <a-input v-model='addSer.serverType' placeholder="Server type"></a-input>
+        <a-input v-model='addSer.serverType' placeholder="Server type" :disabled="!dlgAddEdit"></a-input>
       </a-form-item>
       <a-form-item  label="host" :label-col="formTailLayout.labelCol"  :wrapper-col="formTailLayout.wrapperCol">
         <a-input v-model="addSer.host" placeholder="IP address"></a-input>
@@ -113,9 +117,9 @@
         </a-input-number>
       </a-form-item>
       <a-form-item label="frontend" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
-        <a-switch :value="addSer.frontend" checkedChildren="frontend" unCheckedChildren="backend"></a-switch>
+        <a-switch :value="addSer.frontend" checkedChildren="frontend" unCheckedChildren="backend" :disabled="!dlgAddEdit"></a-switch>
       </a-form-item>
-      <a-form-item v-if="addSer.frontend"  label="clientPort" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
+      <a-form-item v-if="addSer.frontend" label="clientPort" :label-col="formTailLayout.labelCol" :wrapper-col="formTailLayout.wrapperCol">
         <a-input-number v-model="addSer.clientPort" :min='1000'>
         </a-input-number>
       </a-form-item>
@@ -318,6 +322,21 @@ const nodeBasicMethod = {
         gGraph.get('canvas').draw();
       });
     }
+
+    const rect = group.find(element => element.get('name') === 'rect-shape');
+    if (rect) {
+      const bg = group.find(element => element.get('name') === 'collapse-icon-bg');
+      rect.on('mouseenter', function () {
+        rect.attr('opacity', 0.6);
+        rect.attr('lineWidth', 8);
+        gGraph.get('canvas').draw();
+      });
+      rect.on('mouseleave', function () {
+        rect.attr('opacity', 1);
+        rect.attr('lineWidth', 2);
+        gGraph.get('canvas').draw();
+      });
+    }
   },
   setState: function setState (name, value, item) {
     const hasOpacityClass = [ 'collapse-icon-bg' ];
@@ -493,7 +512,6 @@ G6.registerNode(TREE_NODE, {
       /* name */
       group.addShape('text', {
         attrs: {
-          /* 根据 IP 的长度计算出 剩下的 留给 name 的长度！ */
           text: data.id + (data.cnt ? ` ( ${data.cnt} )` : ''), // data.id,
           x: 19,
           y: 19,
@@ -662,6 +680,7 @@ export default {
       formItemLayout,
       formTailLayout,
       dlgAddVisable: false,
+      dlgAddEdit: true, // true 表示是添加; false表示更新
       addSer: {
         serverId: 'aaa-1',
         serverType: 'aaa',
@@ -672,7 +691,27 @@ export default {
       },
       curSelNode: null,
       dlgAddBatchVisable: false,
-      txtBatchAdd: ''
+      txtBatchAdd: '',
+      layout: {
+        'radial': {
+          type: 'compactBox', // 'compactBox','dendrogram'
+          direction: 'LR',
+          getId: d => d.id,
+          getWidth: () => 243,
+          getVGap: () => 24,
+          getHGap: () => 50,
+          radial: true
+        },
+        'rect': {
+          type: 'compactBox', // 'compactBox','dendrogram'
+          direction: 'LR',
+          getId: d => d.id,
+          getWidth: () => 243,
+          getVGap: () => 24,
+          getHGap: () => 50,
+          radial: false
+        }
+      }
     };
   },
   computed: {
@@ -834,6 +873,7 @@ export default {
         width,
         height,
         zoom: 1,
+        fitView: true,
         modes: {
           default: [{
             type: 'collapse-expand',
@@ -895,15 +935,7 @@ export default {
             stroke: '#A3B1BF'
           }
         },
-        layout: {
-          type: 'compactBox', // 'compactBox','dendrogram'
-          direction: 'LR',
-          getId: d => d.id,
-          getWidth: () => 243,
-          getVGap: () => 24,
-          getHGap: () => 50,
-          radial: true
-        }
+        layout: self.layout.radial
       });
 
       graph.on('beforepaint', () => {
@@ -951,7 +983,10 @@ export default {
       /// /////
       this.graph = graph;
       gGraph = graph;
-      this.renderGraphics();
+      // this.renderGraphics();
+      this.graph.data(this.gData);
+      this.graph.render();
+      this.graph.fitView();
     },
     showNodeDetail (dataType, id) {
       let curSelInfo = null;
@@ -960,7 +995,7 @@ export default {
       } else if (dataType === 'node') {
         curSelInfo = this.$store.getters.sexpNode(id);
       }
-      if (curSelInfo !== null) {
+      if (curSelInfo) {
         curSelInfo.lv = dataType;
       }
       console.log('---curSelInfo:', curSelInfo);
@@ -973,6 +1008,9 @@ export default {
     handleShowStatusChange (e) {
       this.show.status = e.target.value;
       this.renderGraphics();
+    },
+    handleLayoutChange (layout) {
+      this.graph.updateLayout(this.layout[layout]);
     },
     filterOption (input, option) {
       return (
@@ -1029,10 +1067,12 @@ export default {
 
       this.$message[resp.status](resp.message);
     },
-    renderGraphics () {
-      this.graph.data(this.gData);
-      this.graph.render();
-      this.graph.fitView();
+    renderGraphics (render = true) {
+      let zoom = this.graph.getZoom();
+      this.graph.changeData(this.gData);
+      let x = parseInt(this.graph.cfg.width / 2);
+      let y = parseInt(this.graph.cfg.height / 2);
+      this.graph.zoomTo(zoom, { x, y });
     },
     async addServerBatch () {
       let cont = this.txtBatchAdd;
@@ -1099,17 +1139,52 @@ export default {
       this.$message[resp.status](resp.message);
     },
     async stopServer (ser) {
-      console.log('stop ', ser.serverId);
+      console.log('stop ', ser);
+
+      this.$store.dispatch('StopServer', ser.serverId);
+      this.renderGraphics();
     },
     async startServer (ser) {
-      console.log('start ', ser.serverId);
+      console.log('start ', ser);
+
+      this.$store.dispatch('StartServer', ser.serverId);
+      this.renderGraphics();
     },
     async deleteServer (ser) {
-      console.log('delete ', ser.serverId);
+      let ret = await this.$store.dispatch('DeleteServer', ser.serverId);
+      if (ret.status === 'success') {
+        this.curSelNode = null;
+        this.renderGraphics(false);
+      }
+
+      this.$message[ret.status](ret.message);
     },
-    async editServer (ser) {
-      console.log('edit ', ser.serverId);
+    showEditDlg (ser) {
+      this.dlgAddEdit = false;
+
+      let { serverId, serverType, host, port, frontend, clientPort } = ser;
+      this.addSer.serverId = serverId;
+      this.addSer.serverType = serverType;
+      this.addSer.host = host;
+      this.addSer.port = port;
+      this.addSer.frontend = frontend;
+      this.addSer.clientPort = clientPort;
+
+      this.dlgAddVisable = true;
+    },
+    async editServer () {
+      let newCfg = this.addSer;
+      this.$store.dispatch('UpdateServer', newCfg);
+      this.renderGraphics();
+    },
+    async onHandlerDlgOk () {
+      if (this.dlgAddEdit) {
+        this.addServer();
+      } else {
+        this.editServer();
+      }
     }
+
   }
 };
 </script>
