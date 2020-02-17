@@ -227,58 +227,46 @@ const EXPAND_ICON = function EXPAND_ICON (x, y, r) {
 let selectedItem;
 
 let gGraph = null;
+const LineStartX = -48; // 绘制比例线的起始位置
+
+function strLen (str) {
+  let len = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    if (str.charCodeAt(i) > 0 && str.charCodeAt(i) < 128) {
+      len += 1;
+    } else {
+      len += 2;
+    }
+  }
+  return len;
+};
 
 /* 精简节点和复杂节点共用的一些方法 */
 const nodeBasicMethod = {
   createNodeBox: function createNodeBox (group, config, width, height, isRoot) {
     /* 最外面的大矩形 */
-    const container = group.addShape('rect', {
+    const container = group.addShape('circle', {
       attrs: {
         x: 0,
         y: 0,
-        width: width - 16,
-        height
+        r: width
       },
       name: 'container-rect-shape'
     });
-    if (!isRoot) {
-      /* 左边的小圆点 */
-      group.addShape('circle', {
-        attrs: {
-          x: 3,
-          y: height / 2,
-          r: 6,
-          fill: config.basicColor
-        },
-        name: 'left-dot-shape'
-      });
-    }
+
     /* 矩形 */
-    group.addShape('rect', {
+    group.addShape('circle', {
       attrs: {
         x: 3,
         y: 0,
-        width: width - 19,
-        height,
+        r: width,
         fill: config.bgColor,
-        stroke: config.borderColor,
-        radius: 2
+        stroke: config.borderColor
+        // radius: 2
       },
       name: 'rect-shape'
     });
 
-    /* 左边的粗线 */
-    group.addShape('rect', {
-      attrs: {
-        x: 3,
-        y: 0,
-        width: 3,
-        height,
-        fill: config.basicColor,
-        radius: 1.5
-      },
-      name: 'left-border-shape'
-    });
     return container;
   },
   /* 生成树上的 marker */
@@ -465,6 +453,7 @@ G6.registerNode(TREE_NODE, {
     const config = getNodeConfig(cfg);
     const isRoot = cfg.type === 'root';
     const data = cfg;
+    const orgi = data.orgi;
     const { nodeError } = data;
     /* 最外面的大矩形 */
     let container = null;
@@ -473,7 +462,7 @@ G6.registerNode(TREE_NODE, {
     if (isVirNode) {
       container = nodeCircleMethod.createNodeBox(group, config, 24, isRoot);
     } else {
-      container = nodeBasicMethod.createNodeBox(group, config, 243, 64, isRoot);
+      container = nodeBasicMethod.createNodeBox(group, config, 24, 64, isRoot);
     }
 
     if (data.dataType !== 'root') {
@@ -483,7 +472,7 @@ G6.registerNode(TREE_NODE, {
           attrs: {
             text: data.id + `(${data.cnt})`,
             x: -12,
-            y: -34,
+            y: -36,
             fontSize: 14,
             textAlign: 'left',
             textBaseline: 'middle',
@@ -495,50 +484,114 @@ G6.registerNode(TREE_NODE, {
       } else {
         group.addShape('text', {
           attrs: {
-            text: data.lv,
-            x: 3,
-            y: -10,
-            fontSize: 12,
+            text: data.id + (data.cnt ? ` ( ${data.cnt} )` : ''),
+            x: -48,
+            y: -48,
+            fontSize: 14,
+            fontWeight: 600,
             textAlign: 'left',
             textBaseline: 'middle',
             fill: 'rgba(0,0,0,0.65)'
           },
           name: 'type-text-shape'
         });
+
+        if (data.lv === 'sys') {
+          group.addShape('path', {
+            attrs: {
+              startArrow: false,
+              endArrow: false,
+              path: [
+                ['M', LineStartX + 100, -38],
+                ['L', LineStartX, -38]
+              ],
+              stroke: '#000',
+              lineWidth: 1,
+              lineAppendWidth: 5
+            },
+            // must be assigned in G6 3.3 and later versions. it can be any value you want
+            name: 'path-shape-base'
+          });
+        }
       }
     }
 
     if (!isVirNode) {
-      /* name */
-      group.addShape('text', {
-        attrs: {
-          text: data.id + (data.cnt ? ` ( ${data.cnt} )` : ''), // data.id,
-          x: 19,
-          y: 19,
-          fontSize: 14,
-          fontWeight: 700,
-          textAlign: 'left',
-          textBaseline: 'middle',
-          fill: config.fontColor,
-          cursor: 'pointer'
-        },
-        name: 'name-text-shape'
-      });
+      let it = data.orgi;
+      let msg = '';
 
-      /* 下面的文字 */
-      group.addShape('text', {
-        attrs: {
-          text: data.keyInfo,
-          x: 19,
-          y: 45,
-          fontSize: 14,
-          textAlign: 'left',
-          textBaseline: 'middle',
-          fill: config.fontColor,
-          cursor: 'pointer'
-        },
-        name: 'bottom-text-shape'
-      });
+      if (data.lv === 'sys') {
+        msg = `${(it.cpu_idle < 0) ? 0.99 : it.cpu_idle}`;
+        let ratMem = parseInt(it['free/total'] * 100);
+        group.addShape('path', {
+          attrs: {
+            startArrow: false,
+            endArrow: false,
+            path: [
+              ['M', LineStartX + ratMem, -33],
+              ['L', LineStartX, -33]
+            ],
+            stroke: '#2F54EB',
+            lineWidth: 2,
+            lineAppendWidth: 5
+          },
+          // must be assigned in G6 3.3 and later versions. it can be any value you want
+          name: 'path-shape-mem'
+        });
+
+        let cpuIdle = it.cpu_idle;
+        if (cpuIdle < 0) { cpuIdle = 0.99; }
+        let ratCpu = parseInt(cpuIdle * 100);
+        group.addShape('path', {
+          attrs: {
+            startArrow: false,
+            endArrow: false,
+            path: [
+              ['M', LineStartX + ratCpu, -28],
+              ['L', LineStartX, -28]
+            ],
+            stroke: '#52C41A',
+            lineWidth: 2,
+            lineAppendWidth: 5
+          },
+          // must be assigned in G6 3.3 and later versions. it can be any value you want
+          name: 'path-shape-cpu'
+        });
+      } else if (data.lv === 'node') {
+        msg = `${it.port}`;
+        if (((it.port < 0) || (it.port === undefined)) &&
+          it.clientPort !== undefined && it.clientPort > 0) {
+          msg = `${it.clientPort}`;
+        }
+
+        group.addShape('text', {
+          attrs: {
+            text: data.descr,
+            x: -48,
+            y: -30,
+            fontSize: 14,
+            textAlign: 'left',
+            textBaseline: 'middle',
+            fill: 'rgba(0,0,0,0.65)'
+          },
+          name: 'content-text-shape'
+        });
+
+        group.addShape('text', {
+          attrs: {
+            text: msg,
+            x: -18,
+            y: 3,
+            fontSize: 14,
+            fontWeight: 600,
+            textAlign: 'middle',
+            textBaseline: 'middle',
+            fill: config.fontColor,
+            cursor: 'pointer'
+          },
+          name: 'name-text-shape'
+        });
+      }
     }
 
     const hasChildren = cfg.children && cfg.children.length > 0;
@@ -546,7 +599,7 @@ G6.registerNode(TREE_NODE, {
       if (isVirNode) {
         nodeCircleMethod.createNodeMarker(group, cfg.collapsed, 4, 0);
       } else {
-        nodeBasicMethod.createNodeMarker(group, cfg.collapsed, 236, 32);
+        nodeBasicMethod.createNodeMarker(group, cfg.collapsed, 38, 0);
       }
     }
     return container;
@@ -768,7 +821,8 @@ export default {
           lv: 'sys',
           ip: it.ip,
           keyInfo: msg,
-          orgi: it
+          orgi: it,
+          runCnt: 0 // 正在运行节点数量
         };
 
         let types = {};
@@ -809,9 +863,11 @@ export default {
               lv: 'type',
               cnt: 1,
               keyInfo: '' };
+            if (v.runStatus === true) nSys.runCnt = 1;
           } else {
             types[v.serverType].children.push(node);
             types[v.serverType].cnt++;
+            if (v.runStatus === true) nSys.runCnt++;
           }
         }
 
@@ -827,8 +883,10 @@ export default {
           }
         }
 
-        nSys.children = nodes;
-        data.children.push(nSys);
+        if (nodes.length > 0) {
+          nSys.children = nodes;
+          data.children.push(nSys);
+        }
       }
       return data;
     },
@@ -897,29 +955,6 @@ export default {
             animate: {
               callback: function callback () {
                 graph.focusItem(selectedItem);
-              }
-            }
-          },
-          {
-            type: 'tooltip',
-            formatText: function (data, target) {
-              // console.log('target:', target);
-              let a = '<div style="padding: 8px 6px;"><ul>';
-
-              if (data.lv === 'sys') {
-                ['Time', 'hostname'].forEach((v, i) => {
-                  a += `<li><b>${v}</b>: ${data.orgi[v]}</li>`;
-                });
-
-                return a + '</ul></div>';
-              } else if (data.lv === 'node') {
-                ['time', 'uptime'].forEach((v, i) => {
-                  a += `<li><b>${v}</b>: ${data.orgi[v]}</li>`;
-                });
-
-                return a + '</ul></div>';
-              } else {
-                return `<div style="display:none">${data.id}</div>`;
               }
             }
           },
