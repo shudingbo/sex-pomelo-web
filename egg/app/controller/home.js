@@ -156,6 +156,26 @@ class HomeController extends Controller {
     }
 
     ctx.success = { message: `${body.serverId} Unreg Success!` };
+  }
+
+  async upServerInfo() {
+    const { ctx } = this;
+    const body = ctx.request.body;
+    const ret = await this.service.pomelo.pomelo.getRegServer(body.serverId);
+    if (ret === null) {
+      ctx.error = { message: `Can't find Server ${body.serverId}` };
+      return;
+    }
+
+    for (const it in body) {
+      ret[it] = body[it];
+    }
+
+    const data = {};
+    data[ body.serverId ] = JSON.stringify(ret);
+
+    await this.service.pomelo.pomelo.regServers(data);
+    ctx.success = { message: `${body.serverId} Update Success!` };
 
   }
 

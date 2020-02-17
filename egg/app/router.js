@@ -11,4 +11,5 @@ module.exports = app => {
   router.post('/regServer', controller.home.regServer);
   router.post('/regServerBatch', controller.home.regServerBatch);
   router.delete('/unregServer', controller.home.unregServer);
+  router.post('/upServerInfo', controller.home.upServerInfo);
 };

@@ -140,6 +140,16 @@ const sexp = {
           state.systemInfoMap[sysName].nodes[sInfo.serverId] = newNode;
         }
       }
+
+      // filter overTime server
+      for (let sys in state.systemInfoMap) {
+        let nodes = state.systemInfoMap[sys].nodes;
+        for (let ser in nodes) {
+          if (servers[ser] === undefined) {
+            delete nodes[ser];
+          }
+        }
+      }
     },
     ADD_SERVERS: (state, servers) => {
       let system = state.systemInfoMap;
@@ -231,7 +241,6 @@ const sexp = {
       }
       //
       state.systemInfoMap = { ...state.systemInfoMap };
-      console.log(state.systemInfoMap);
     },
     DELETE_SERVERS: (state, serverId) => {
       let sysName = state.nodeHostMap[serverId];
@@ -289,13 +298,53 @@ const sexp = {
       }
     },
     async StopServer ({ commit }, serverId) {
-      commit('UPDATE_SERVERS', { serverId, runStatus: false });
+      const resp = await axios({
+        url: '/pomelo',
+        method: 'get',
+        params: { cmd: `stop ${serverId}` }
+      });
+
+      if (resp.status === 'success') {
+        commit('UPDATE_SERVERS', { serverId, runStatus: false });
+      }
+
+      return resp;
     },
-    async StartServer ({ commit }, serverId) {
-      commit('UPDATE_SERVERS', { serverId, runStatus: true });
+    async StartServer ({ commit }, serInfo) {
+      let cmd = `add host=${serInfo.host} serverType=${serInfo.serverType} id=${serInfo.serverId}`;
+      if (serInfo.port > 0) {
+        cmd += ` port=${serInfo.port}`;
+      }
+
+      if (serInfo.clientPort > 0) {
+        cmd += ` clientPort=${serInfo.clientPort}`;
+      }
+
+      if (serInfo.frontend === true) {
+        cmd += ` frontend=true`;
+      }
+
+      const resp = await axios({
+        url: '/pomelo',
+        method: 'get',
+        params: { cmd }
+      });
+
+      if (resp.status === 'success') {
+        commit('UPDATE_SERVERS', { serverId: serInfo.serverId, runStatus: true });
+      }
+      return resp;
     },
     async UpdateServer ({ commit }, serverInfo) {
-      commit('UPDATE_SERVERS', serverInfo);
+      const resp = await axios({
+        url: '/upServerInfo',
+        method: 'post',
+        data: serverInfo
+      });
+      if (resp.status === 'success') {
+        commit('UPDATE_SERVERS', serverInfo);
+      }
+      return resp;
     },
     async DeleteServer ({ commit }, serverId) {
       const resp = await axios({
