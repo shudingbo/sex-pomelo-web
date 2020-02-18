@@ -4,24 +4,24 @@
       <a-col :span="20">
         <div>
           <div>
-            <span>Layout: </span>
+            <span>Layout </span>
             <a-select size="small" style="width: 100px" v-model="show.layout"  @change="handleLayoutChange" >
               <a-select-option v-for="(v,k) in layout" :key="k" :value="k">{{k}}</a-select-option>
             </a-select>
-            <span> Type Node: </span>
+            <span> Type Node </span>
             <a-switch checkedChildren="show" unCheckedChildren="hide" v-model="show.serverTypeNode" @change="handleCfgChange"/>
-            <span> ServerStatus: </span>
+            <span> ServerStatus </span>
             <a-radio-group v-model="show.status" @change="handleCfgChange" size="small">
               <a-radio-button value="run">Run</a-radio-button>
               <a-radio-button value="all">All</a-radio-button>
               <a-radio-button value="stop">Stop</a-radio-button>
             </a-radio-group>
-            <span> System : </span>
+            <span> System </span>
             <a-select size="small" style="width: 120px" v-model="show.sys" showSearch :filterOption="filterOption" @change="handleCfgChange" >
               <a-select-option key="-1" :value="''">All</a-select-option>
               <a-select-option v-for="i in systems" :key="i" :value="i">{{i}}</a-select-option>
             </a-select>
-            <span> ServerType: </span>
+            <span> ServerType </span>
             <a-select size="small" style="width: 120px" v-model="show.serverType" showSearch :filterOption="filterOption" @change="handleCfgChange" >
               <a-select-option key="-1" :value="''">All</a-select-option>
               <a-select-option v-for="i in serverTypes" :key="i" :value="i">{{i}}</a-select-option>
@@ -92,11 +92,25 @@
       </a-form-item>
     </a-modal>
     <div >
-        <a-menu size="small" id="contextMenu" style="display:none;"
-        @click="handleMenuClick">
+        <a-menu size="small" id="contextMenuNode" style="display:none;position: fixed;" theme="dark"
+        @click="handleMenuNodeClick">
           <a-menu-item key="Stop" v-if="curSelNode && curSelNode.runStatus"><a-icon type="poweroff" />Stop</a-menu-item>
           <a-menu-item key="Start" v-if="curSelNode && curSelNode.runStatus===false"><a-icon type="caret-right" />Start</a-menu-item>
           <a-menu-item key="Edit" v-if="curSelNode && curSelNode.runStatus===false"><a-icon type="edit" />Edit</a-menu-item>
+          <a-menu-item key="Delete" v-if="curSelNode && curSelNode.runStatus===false"><a-icon type="close" />Delete</a-menu-item>
+        </a-menu>
+        <a-menu size="small" id="contextMenuSys" style="display:none;position: fixed;" theme="dark"
+        @click="handleMenuSysClick">
+          <a-menu-item key="StopAll" :disabled="true"><a-icon type="poweroff" />Stop All</a-menu-item>
+          <a-menu-item key="StartAll" :disabled="true"><a-icon type="caret-right" />Start All</a-menu-item>
+        </a-menu>
+        <a-menu size="small" id="contextMenuType" style="display:none;position: fixed;" theme="dark"
+        @click="handleMenuTypeClick">
+          <a-menu-item key="StopAll" :disabled="true"><a-icon type="poweroff" />Stop All</a-menu-item>
+          <a-menu-item key="StartAll" :disabled="true"><a-icon type="caret-right" />Start All</a-menu-item>
+          <a-sub-menu title="MoveTo" key="MoveTo" >
+            <a-menu-item v-for="i in systems" :key="i" :value="i">{{i}}</a-menu-item>
+          </a-sub-menu>
         </a-menu>
     </div>
   </div>
@@ -658,6 +672,7 @@ export default {
         clientPort: 0
       },
       curSelNode: null,
+      curSelNodeData: null, // graph model
       dlgAddBatchVisable: false,
       txtBatchAdd: '',
       layout: {
@@ -807,6 +822,29 @@ export default {
   },
   mounted () {
     this.createGraphics();
+
+    // if (window.ResizeObserver) {
+    //   const viewElem = document.querySelector('#pomeloSystemGraph');
+    //   const resizeObserver = new ResizeObserver((entries) => {
+    //     for (const entry of entries) {
+    //       if (!this.initialHeight) {
+    //         this.initialHeight = entry.contentRect.height;
+    //       }
+    //       if (this.initialHeight) {
+    //         const deltaHeight = this.initialHeight - entry.contentRect.height;
+    //         // this.$bus.$emit('rerenderViewAndEditor', deltaHeight);
+    //         console.log(this.initialHeight, entry.contentRect.height);
+    //         console.log(this.initialWidth, entry.contentRect.width);
+    //         // gGraph.get('canvas').changeSize(entry.contentRect.width, entry.contentRect.height);
+    //         // const canvas = gGraph.get('canvas');
+    //         gGraph.fitView();
+    //       }
+    //     }
+    //   });
+    //   resizeObserver.observe(viewElem);
+    // } else {
+    //   console.warn('Not support ResizeObserver');
+    // }
   },
   methods: {
     saveGraphCfg () {
@@ -891,7 +929,7 @@ export default {
         const shape = event.target;
         let data = item._cfg.model;
 
-        self.showNodeDetail(data.lv, data.id);
+        self.showNodeDetail(data);
       });
 
       graph.on('node:contextmenu', (evt) => {
@@ -901,17 +939,38 @@ export default {
         const { item } = evt;
         const shape = evt.target;
         let data = item._cfg.model;
-        self.showNodeDetail(data.lv, data.id);
-        let nodeMenu = document.getElementById('contextMenu');
-        let xy = this.graph.getClientByPoint(evt.x, evt.y);
-        nodeMenu.style.left = `${xy.x}.px`;
-        nodeMenu.style.top = `${xy.y}px`;
-        nodeMenu.style.display = 'block';
+        self.showNodeDetail(data);
+
+        if (data.orgi && data.orgi.serverType === 'master') {
+          return;
+        }
+
+        let menu = null;
+
+        switch (data.lv) {
+        case 'sys':
+          menu = document.getElementById('contextMenuSys');
+          break;
+        case 'node':
+          menu = document.getElementById('contextMenuNode');
+          break;
+        case 'type':
+          menu = document.getElementById('contextMenuType');
+          break;
+        }
+
+        if (menu !== null) {
+          let xy = this.graph.getClientByPoint(evt.x, evt.y);
+          menu.style.left = `${xy.x}.px`;
+          menu.style.top = `${xy.y}px`;
+          menu.style.display = 'block';
+        }
       });
 
       graph.on('node:mouseleave', () => {
-        let nodeMenu = document.getElementById('contextMenu');
-        nodeMenu.style.display = 'none';
+        document.getElementById('contextMenuNode').style.display = 'none';
+        document.getElementById('contextMenuType').style.display = 'none';
+        document.getElementById('contextMenuSys').style.display = 'none';
       });
 
       // graph.on('contextmenu', (evt) => {
@@ -930,17 +989,21 @@ export default {
       this.graph.render();
       this.graph.fitView();
     },
-    showNodeDetail (dataType, id) {
-      let curSelInfo = null;
+    showNodeDetail (data) {
+      let id = data.id;
+      let dataType = data.lv;
+      this.curSelNode = null;
+      this.curSelNodeData = null;
       if (dataType === 'sys') {
-        curSelInfo = this.$store.getters.sexpSystem(id);
+        this.curSelNode = this.$store.getters.sexpSystem(id);
       } else if (dataType === 'node') {
-        curSelInfo = this.$store.getters.sexpNode(id);
+        this.curSelNode = this.$store.getters.sexpNode(id);
+      } else {
+        this.curSelNodeData = data;
       }
-      if (curSelInfo) {
-        curSelInfo.lv = dataType;
+      if (this.curSelNode) {
+        this.curSelNode.lv = dataType;
       }
-      this.curSelNode = curSelInfo;
     },
     handleLayoutChange (layout) {
       this.graph.updateLayout(this.layout[layout]);
@@ -994,13 +1057,53 @@ export default {
     async onHandlerDlgOk () {
       this.editServer();
     },
-    handleMenuClick (e) {
+    handleMenuNodeClick (e) {
       if (this.curSelNode !== null) {
-        switch (e.key) {
-        case 'Stop': this.stopServer(this.curSelNode); break;
-        case 'Start': this.startServer(this.curSelNode); break;
-        case 'Edit': this.showEditDlg(this.curSelNode); break;
+        if (e.key === 'Edit') {
+          this.showEditDlg(this.curSelNode);
+          return;
         }
+
+        let self = this;
+        this.$confirm({
+          title: `Do you Want to ${e.key} ${this.curSelNode.serverId} ?`,
+          // content: h => <div style="color:red;">Some descriptions</div>,
+          onOk () {
+            switch (e.key) {
+            case 'Stop': self.stopServer(self.curSelNode); break;
+            case 'Start': self.startServer(self.curSelNode); break;
+            case 'Delete': self.deleteServer(self.curSelNode); break;
+            }
+          },
+          onCancel () {
+          },
+          class: 'test'
+        });
+      }
+    },
+    handleMenuSysClick (e) {
+      console.log(e);
+      console.log(this.curSelNode);
+      console.log(this.curSelNodeData);
+      if (this.curSelNode !== null) {
+        // switch (e.key) {
+        // case 'Stop': this.stopServer(this.curSelNode); break;
+        // case 'Start': this.startServer(this.curSelNode); break;
+        // case 'Edit': this.showEditDlg(this.curSelNode); break;
+        // }
+      }
+    },
+    handleMenuTypeClick (e) {
+      console.log(e);
+      console.log(this.curSelNode);
+      console.log(this.curSelNodeData);
+
+      if (this.curSelNode !== null) {
+        // switch (e.key) {
+        // case 'Stop': this.stopServer(this.curSelNode); break;
+        // case 'Start': this.startServer(this.curSelNode); break;
+        // case 'Edit': this.showEditDlg(this.curSelNode); break;
+        // }
       }
     }
   },
@@ -1021,27 +1124,6 @@ export default {
   background-color: rgba(255, 255, 255, 0.9);
   box-shadow: rgb(174, 174, 174) 0px 0px 10px;
 }
-
-#contextMenu {
-    position: fixed;
-    list-style-type: none;
-    padding: 10px 8px;
-    left: -150px;
-    background-color: rgba(255, 255, 255, 0.9);
-    border: 1px solid #e2e2e2;
-    border-radius: 4px;
-    font-size: 12px;
-    color: #545454;
-  }
-  #contextMenu li {
-    cursor: pointer;
-    list-style-type:none;
-    list-style: none;
-    margin-left: 0px;
-  }
-  #contextMenu li:hover {
-    color: #aaa;
-  }
 
 li{ list-style: none;}
 ul{margin:0px;padding:0px}
