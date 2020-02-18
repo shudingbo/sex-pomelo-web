@@ -86,6 +86,7 @@ module.exports = {
   },
 
   devServer: {
+    // sockHost: 'localhost',
     port: 8080, // 更改默认端口号
     proxy: {
       '/api': {

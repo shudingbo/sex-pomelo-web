@@ -21,7 +21,13 @@ const err = (error) => {
         message: 'Forbidden',
         description: data.message
       });
+    } else if (error.response.status === 404) {
+      notification.error({
+        message: '404',
+        description: data.message
+      });
     }
+
     if (error.response.status === 401 && !(data.result && data.result.isLogin)) {
       notification.error({
         message: 'Unauthorized',

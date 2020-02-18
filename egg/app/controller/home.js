@@ -179,6 +179,30 @@ class HomeController extends Controller {
 
   }
 
+  async getAllStartGroup() {
+    const { ctx } = this;
+    const g = await this.service.pomelo.pomelo.getAllGroup();
+    ctx.success = { group: g };
+
+  }
+
+  async saveStartGroup() {
+    const { ctx } = this;
+    const body = ctx.request.body;
+    const gName = body.name;
+    const gData = body.data;
+
+    await this.service.pomelo.pomelo.saveGroup(gName, gData);
+    ctx.success = { message: `Start Group [ ${gName} ] Save OK.` };
+  }
+
+  async deleteStartGroup() {
+    const { ctx } = this;
+    const body = ctx.request.body;
+    await this.service.pomelo.pomelo.deleteGroup(body.name);
+    ctx.success = { message: `${body.name} delete Success!` };
+  }
+
 }
 
 module.exports = HomeController;

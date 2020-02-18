@@ -3,6 +3,7 @@
 const Service = require('egg').Service;
 
 const key_ServerList = 'sexp:serls';
+const key_StartGroup = 'sexp:sgroup';
 
 
 class PomeloService extends Service {
@@ -55,6 +56,46 @@ class PomeloService extends Service {
    */
   async unregServers(serverId) {
     const ret = await this.app.redis.hdel(key_ServerList, serverId);
+    return ret;
+  }
+
+  async getAllGroup() {
+    const ret = await this.app.redis.hgetall(key_StartGroup);
+    for (const id in ret) {
+      ret[id] = JSON.parse(ret[id]);
+    }
+    return ret;
+  }
+
+  /** 获取指定名称的启动分组
+   *
+   * @param {string} groupName 启动组名称
+   * @return {array|null} null 表示没有
+   */
+  async getGroupByName(groupName) {
+    const ret = await this.app.redis.hget(key_StartGroup, groupName);
+    if (ret !== null) {
+      return JSON.parse(ret);
+    }
+
+    return null;
+  }
+
+  /** 保存分组
+   *
+   * @param {string} groupName 分组名称
+   * @param {array} data 数据
+   */
+  async saveGroup(groupName, data) {
+    return await this.app.redis.hset(key_StartGroup, groupName, JSON.stringify(data));
+  }
+
+  /** 删除指定名称分组
+   *
+   * @param {string} groupName 分组名称
+   */
+  async deleteGroup(groupName) {
+    const ret = await this.app.redis.hdel(key_StartGroup, groupName);
     return ret;
   }
 

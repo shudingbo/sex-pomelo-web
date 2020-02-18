@@ -12,4 +12,7 @@ module.exports = app => {
   router.post('/regServerBatch', controller.home.regServerBatch);
   router.delete('/unregServer', controller.home.unregServer);
   router.post('/upServerInfo', controller.home.upServerInfo);
+  router.get('/getAllStartGroup', controller.home.getAllStartGroup);
+  router.post('/saveStartGroup', controller.home.saveStartGroup);
+  router.delete('/deleteStartGroup', controller.home.deleteStartGroup);
 };

@@ -39,16 +39,16 @@ export const asyncRouterMap = [
             meta: { title: '服务器信息' }
           },
           {
+            path: '/dashboard/startadmin',
+            name: 'StartAdmin',
+            component: () => import('@/views/dashboard/StartAdmin'),
+            meta: { title: '启动管理', keepAlive: false, icon: 'caret-right', permission: [ 'dashboard' ] }
+          },
+          {
             path: '/dashboard/analysis',
             name: 'Analysis',
             component: () => import('@/views/dashboard/Analysis'),
             meta: { title: '分析页', keepAlive: false, permission: [ 'dashboard' ] }
-          },
-          // 外部链接
-          {
-            path: 'https://www.baidu.com/',
-            name: 'Monitor',
-            meta: { title: '监控页（外部）', target: '_blank' }
           }
         ]
       }
