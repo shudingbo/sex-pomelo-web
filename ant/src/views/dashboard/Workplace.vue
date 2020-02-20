@@ -12,7 +12,7 @@
         </div>
       </a-tab-pane>
       <a-tab-pane tab="Table" key="sysT" forceRender>
-        <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="hostname" size="small">
+        <a-table :columns="sysColumns" :dataSource="sysMapArr" class="components-table-demo-nested" rowKey="host" size="small">
             <a-badge slot="slHost" slot-scope="text,record" :count="record.nodes.length" :numberStyle="{backgroundColor: '#52c41a'}">
               <a-tag href="javascript:;">{{text}}</a-tag>
             </a-badge>

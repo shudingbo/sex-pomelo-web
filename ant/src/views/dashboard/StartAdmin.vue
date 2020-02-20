@@ -13,12 +13,22 @@
             <a-button size="small" type="danger" icon="close" title="Delete Current Group"></a-button>
         </a-popconfirm>
         <a-divider type="vertical"/>
-        <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Stop ${this.curSelGroup}`" @confirm="() => onStopGroup()">
+        <template v-if="batchInfo.isRun" >
+          <a-button size="small" type="primary" icon="poweroff" style="margin-right:6px;" title="Stop Current Group" @click="onStopGroup()"></a-button>
+        </template>
+        <template v-else>
+          <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Stop ${this.curSelGroup}`" @confirm="() => onStopGroup()">
             <a-button size="small" type="primary" icon="poweroff" style="margin-right:6px;" title="Stop Current Group"></a-button>
-        </a-popconfirm>
-        <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Start ${this.curSelGroup}`" @confirm="() => onStartGroup()">
+          </a-popconfirm>
+        </template>
+        <template v-if="batchInfo.isRun" >
+          <a-button size="small" type="danger" icon="caret-right" style="margin-right:6px;" title="Stop Current Group" @click="onStartGroup()"></a-button>
+        </template>
+        <template v-else>
+          <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Start ${this.curSelGroup}`" @confirm="() => onStartGroup()">
             <a-button size="small" type="danger" icon="caret-right" title="Start Current Group"></a-button>
-        </a-popconfirm>
+          </a-popconfirm>
+        </template>
 
         <a-divider type="vertical" v-if="curSelGroup.length > 0"/>
         <a-input-search
@@ -26,6 +36,11 @@
             v-model="filter[0]"
             style="width:120px;margin-right:5px">
         </a-input-search>
+        <a-radio-group v-model="displayStyle" buttonStyle="solid" size="small">
+          <a-radio-button value="all">all</a-radio-button>
+          <a-radio-button value="chk">Check</a-radio-button>
+          <a-radio-button value="unchk" icon="border">Uncheck</a-radio-button>
+        </a-radio-group>
       </div>
       <a-table :columns="ServerCloumn" size="small" rowKey="serverId" bordered=""
         :dataSource="servers" :pagination="false"
@@ -58,6 +73,26 @@
       >
       </a-input>
     </a-modal>
+    <a-modal :visible="runGroup.visable" :title="`${batchInfo.action} group [${curSelGroup}]`" @ok="()=>{runGroup.visable=false}" @cancel="()=>{runGroup.visable=false}">
+      <template slot="footer">
+        <a-button key="submit" type="primary" @click="()=>{runGroup.visable=false}">关闭</a-button>
+      </template>
+      <a-table :dataSource="batchInfo.servers" rowKey="serverId">
+          <a-table-column title="ServerId" dataIndex="serverId" key="serverId" >
+            <template slot-scope="text, record">
+              <a-tag :color="record.runStatus?'green':''">{{text}}</a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column title="actionSta" dataIndex="actionSta" key="actionSta" >
+            <template slot-scope="text, record">
+              <span v-if="record.actionSta===0"><a-icon type="minus" :style="{color:'blue'}"></a-icon> Wait Handler... </span>
+              <span v-else-if="record.actionSta===1"><a-icon  type="check" :style="{color:'green'}"></a-icon> Success</span>
+              <span v-else-if="record.actionSta===3"><a-icon  type="info" :style="{color:'gray'}"></a-icon> Ignore</span>
+              <span v-else><a-icon type="close" :style="{color:'red'}"></a-icon> Error</span>
+            </template>
+          </a-table-column>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
@@ -72,14 +107,17 @@ export default {
   data () {
     return {
       filter: [''],
+      displayStyle: 'all', // all,chk,unchk
       selectedRowKeys: [],
-      startGroup: {// 启动分组
-        test: ['jcby_114'],
-        test2: ['sg777_278']
-      },
+      startGroup: {}, // 启动分组
       curSelGroup: '', // 当前选择分组
       dlgNewGroupVisable: false,
-      newGroupName: ''
+      newGroupName: '',
+      hasChange: false,
+      runGroup: {
+        visable: false,
+        action: '' // 正在运行的启动组操作类型 stop / start
+      }
     };
   },
   computed: {
@@ -118,6 +156,9 @@ export default {
       }
 
       return sers;
+    },
+    batchInfo () {
+      return this.$store.getters.sexpBatchInfo;
     }
   },
   created () {
@@ -146,20 +187,39 @@ export default {
     filterFnNor (key, it) {
       let szServerID = it.serverId.toString();
       if (szServerID.indexOf(key) !== -1) {
+        if (this.displayStyle === 'chk') {
+          return (this.selectedRowKeys.indexOf(szServerID) !== -1);
+        } else if (this.displayStyle === 'unchk') {
+          return (this.selectedRowKeys.indexOf(szServerID) === -1);
+        }
+
         return true;
       }
 
       if (it.serverType.indexOf(key) !== -1) {
+        if (this.displayStyle === 'chk') {
+          return (this.selectedRowKeys.indexOf(szServerID) !== -1);
+        } else if (this.displayStyle === 'unchk') {
+          return (this.selectedRowKeys.indexOf(szServerID) === -1);
+        }
         return true;
       }
 
+      if (this.displayStyle === 'chk') {
+        return (this.selectedRowKeys.indexOf(szServerID) !== -1);
+      } else if (this.displayStyle === 'unchk') {
+        return (this.selectedRowKeys.indexOf(szServerID) === -1);
+      }
       return false;
     },
     onSelectChange (selectedRowKeys) {
       this.selectedRowKeys = selectedRowKeys;
+      this.hasChange = true;
     },
     onGroupSelChange (e) {
+      this.setStore('sexp-cli:defaultGroup', e);
       this.selectedRowKeys = this.startGroup[e];
+      this.hasChange = false;
     },
     async getAllGroup () {
       const res = await axios({
@@ -170,6 +230,11 @@ export default {
 
       if (res.status === 'success') {
         this.startGroup = res.data.group;
+        let curGroup = this.getStore('sexp-cli:defaultGroup');
+        if (curGroup !== null) {
+          this.curSelGroup = curGroup;
+          this.selectedRowKeys = this.startGroup[this.curSelGroup];
+        }
       }
     },
     async onSaveGroup () {
@@ -186,6 +251,7 @@ export default {
 
       if (res.status === 'success') {
         this.startGroup[this.curSelGroup] = [...this.selectedRowKeys];
+        this.hasChange = false;
       }
 
       this.$message[res.status](res.message);
@@ -210,6 +276,7 @@ export default {
       if (res.status === 'success') {
         this.startGroup[this.newGroupName] = [...this.selectedRowKeys];
         this.curSelGroup = this.newGroupName;
+        this.setStore('sexp-cli:defaultGroup', this.newGroupName);
         this.dlgNewGroupVisable = false;
       }
     },
@@ -237,21 +304,70 @@ export default {
       this.$message[res.status](res.message);
     },
     async onStartGroup () {
+      if (this.batchInfo.isRun) {
+        this.runGroup.visable = true;
+        return;
+      }
+
       if (this.curSelGroup === '') {
         this.$message.info('当前没有选择分组，请选择分组');
         return;
       }
 
-      console.log('onStartGroup', this.curSelGroup);
+      if (this.hasChange) {
+        this.$message.info('当前分组没有保存，请先保存分组');
+        return;
+      }
+
+      if (this.startGroup[this.curSelGroup].length === 0) {
+        return;
+      }
+
+      this.runGroup.action = 'start';
+      this.runGroup.visable = true;
+      this.$store.dispatch('BatchStartServer', this.startGroup[this.curSelGroup]);
     },
     async onStopGroup () {
+      if (this.batchInfo.isRun) {
+        this.runGroup.visable = true;
+        return;
+      }
+
       if (this.curSelGroup === '') {
         this.$message.info('当前没有选择分组，请选择分组');
         return;
       }
 
-      console.log('onStopGroup', this.curSelGroup);
+      if (this.startGroup[this.curSelGroup].length === 0) {
+        return;
+      }
+
+      if (this.hasChange) {
+        this.$message.info('当前分组没有保存，请先保存分组');
+        return;
+      }
+
+      this.runGroup.action = 'stop';
+      this.runGroup.visable = true;
+      this.$store.dispatch('BatchStopServer', this.startGroup[this.curSelGroup]);
+    },
+    makeActionData () {
+      let data = {};
+      let sers = this.$store.getters.sexpServers;
+      for (let it of this.startGroup[this.curSelGroup]) {
+        let ser = sers[it];
+        data[it] = { serverId: ser.serverId,
+          runStatus: ser.runStatus,
+          actionSta: 0 // 0,等待处理;1,处理完成;2,处理失败
+        };
+      }
+
+      if (Object.keys(data).length > 0) {
+        return data;
+      }
+      return null;
     }
+
   }
 };
 </script>

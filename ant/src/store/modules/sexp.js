@@ -1,6 +1,8 @@
 
 import { axios } from '@/utils/request';
 import Vue from 'vue';
+import { globalCfg } from '@/config/globalCfg';
+import notification from 'ant-design-vue/es/notification';
 
 function makeNode (sInfo) {
   return {
@@ -21,7 +23,7 @@ function makeNode (sInfo) {
     frontend: sInfo.frontend,
     uptime: 0,
     heapUsed: 0,
-    runStatus: false
+    runStatus: (sInfo.runStatus === undefined) ? false : sInfo.runStatus
   };
 }
 
@@ -29,6 +31,7 @@ function makeSys (host) {
   return {
     Time: '2010-4-5 05:59:15 AM',
     hostname: host,
+    host,
     cpu_user: -1,
     cpu_nice: -1,
     cpu_system: -1,
@@ -51,6 +54,91 @@ function makeSys (host) {
   };
 }
 
+async function getServers () {
+  let resp = await axios({
+    url: '/getAllServers',
+    method: 'get',
+    params: { }
+  });
+  return resp;
+};
+
+async function runPomeloCliCmd (cmd) {
+  let resp = await axios({
+    url: '/pomelo',
+    method: 'get',
+    params: { cmd }
+  });
+  return resp;
+};
+
+async function startServer (serInfo) {
+  let cmd = `add host=${serInfo.host} serverType=${serInfo.serverType} id=${serInfo.serverId}`;
+  if (serInfo.port > 0) {
+    cmd += ` port=${serInfo.port}`;
+  }
+
+  if (serInfo.clientPort > 0) {
+    cmd += ` clientPort=${serInfo.clientPort}`;
+  }
+
+  if (serInfo.frontend === true) {
+    cmd += ` frontend=true`;
+  }
+
+  const resp = await runPomeloCliCmd(cmd);
+  return resp;
+}
+
+async function timeout (ms) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => { resolve(); }, ms);
+  });
+}
+
+/**
+ *
+ * @param {object} state 状态
+ * @param {array} serverIds 服务ID数组
+ * @param {boolean} frontendAfter true,前端服务器是否放在后面
+ */
+function makeBatchOperaList (state, serverIds, frontendAfter) {
+  let data = [];
+  let dataFront = [];
+  let dataFrontBack = [];
+  let sers = state.servers;
+  for (let id of serverIds) {
+    let ser = sers[id];
+    if (ser === undefined) {
+      continue;
+    }
+
+    let bInfo = { serverId: ser.serverId,
+      runStatus: ser.runStatus,
+      actionSta: 0 // 0,等待处理;1,处理完成;2,处理失败,3,忽略
+    };
+    if (ser.frontend === 'true' || ser.frontend === true) {
+      if (ser.port !== undefined && ser.port > 0) {
+        dataFrontBack.push(bInfo);
+      } else {
+        dataFront.push(bInfo);
+      }
+    } else {
+      data.push(bInfo);
+    }
+  }
+
+  if (frontendAfter) {
+    data.push(...dataFrontBack);
+    data.push(...dataFront);
+  } else {
+    data.unshift(...dataFrontBack);
+    data.unshift(...dataFront);
+  }
+
+  return data;
+}
+
 const sexp = {
   state: {
     systemInfo: {},
@@ -58,7 +146,12 @@ const sexp = {
     servers: {},
     systemInfoMap: {},
     nodeHostMap: {}, // node 和 system 映射(存储节点在那个机子上) serverId:host
-    ipHostMap: {} // ip 和 host 映射表( 对应的ip在那个节点上) ip:host
+    ipHostMap: {}, // ip 和 host 映射表( 对应的ip在那个节点上) ip:host
+    batchActionInfo: {
+      action: '', // 动作
+      isRun: false, // 是否正在运行
+      servers: [] // 正在处理的服务器列表
+    }
   },
   mutations: {
     SET_SYSTEMINFO: (state, systemInfo) => {
@@ -66,21 +159,21 @@ const sexp = {
       let system = state.systemInfoMap;
       for (let serId in systemInfo) {
         let sInfo = systemInfo[serId];
-        if (system[sInfo.hostname] === undefined) {
+        if (system[sInfo.host] === undefined) {
           let ob = Object.assign({}, sInfo);
           ob.ip = '127.0.0.1';
           delete ob.serverId;
           ob.nodes = {};
           ob.nodes[ serId ] = {};
-          system[sInfo.hostname] = ob;
+          system[sInfo.host] = ob;
         } else {
-          let nodes = system[sInfo.hostname].nodes;
+          let nodes = system[sInfo.host].nodes;
           if (nodes[sInfo.serverId] === undefined) {
             nodes[ sInfo.serverId ] = {};
           }
         }
 
-        state.nodeHostMap[sInfo.serverId] = sInfo.hostname;
+        state.nodeHostMap[sInfo.serverId] = sInfo.host;
       }
     },
     SET_NODEINFO: (state, nodeInfo) => {
@@ -112,10 +205,10 @@ const sexp = {
           sysName = ipHostMap[sInfo.host];
           if (sysName === undefined) {
             let ob = makeSys(sInfo.host);
-            system[ob.hostname] = ob;
-            ipHostMap[sInfo.host] = ob.hostname;
-            nodeHostMap[sInfo.serverId] = ob.hostname;
-            sysName = ob.hostname;
+            system[ob.host] = ob;
+            ipHostMap[sInfo.host] = ob.host;
+            nodeHostMap[sInfo.serverId] = ob.host;
+            sysName = ob.host;
           } else {
             nodeHostMap[serId] = sysName;
           }
@@ -127,7 +220,7 @@ const sexp = {
           sysIt.ip = sInfo.host;
 
           for (let prop in sInfo) {
-            if (ser[prop] === undefined) {
+            if (ser[prop] === undefined || ser[prop] !== sInfo[prop]) {
               ser[prop] = sInfo[prop];
             }
           }
@@ -151,6 +244,9 @@ const sexp = {
         }
       }
     },
+    UPDATE_SERVERS: (state) => {
+      state.systemInfoMap = { ...state.systemInfoMap };
+    },
     ADD_SERVERS: (state, servers) => {
       let system = state.systemInfoMap;
       let nodeHostMap = state.nodeHostMap;
@@ -167,14 +263,12 @@ const sexp = {
           let ob = makeSys(sInfo.host);
 
           ob.nodes[ serId ] = newNode;
-          // system[ob.hostname] = ob;
-          Vue.set(system, ob.hostname, ob);
+          Vue.set(system, ob.host, ob);
 
-          Vue.set(ipHostMap, sInfo.host, ob.hostname);
-          Vue.set(nodeHostMap, sInfo.serverId, ob.hostname);
-          sysName = ob.hostname;
-          // state.systemInfo[ob.hostname] = ob;
-          Vue.set(state.systemInfo, ob.hostname, ob);
+          Vue.set(ipHostMap, sInfo.host, ob.host);
+          Vue.set(nodeHostMap, sInfo.serverId, ob.host);
+          sysName = ob.host;
+          Vue.set(state.systemInfo, ob.host, ob);
           Vue.set(state.nodeInfo, sInfo.serverId, newNode);
           Vue.set(state.servers, sInfo.serverId, newNode);
         } else {
@@ -188,7 +282,7 @@ const sexp = {
 
       state.systemInfoMap = { ...state.systemInfoMap };
     },
-    UPDATE_SERVERS: (state, serverInfo) => {
+    UPDATE_SERVER: (state, serverInfo) => {
       let serverId = serverInfo.serverId;
 
       let sysName = state.nodeHostMap[serverId];
@@ -213,10 +307,10 @@ const sexp = {
           sSysMap = state.systemInfoMap[sysName];
         } else {
           let ob = makeSys(serverInfo.host);
-          state.systemInfoMap[ob.hostname] = ob;
-          state.ipHostMap[serverInfo.host] = ob.hostname;
-          state.nodeHostMap[serverId] = ob.hostname;
-          sysName = ob.hostname;
+          state.systemInfoMap[ob.host] = ob;
+          state.ipHostMap[serverInfo.host] = ob.host;
+          state.nodeHostMap[serverId] = ob.host;
+          sysName = ob.host;
           sSysMap = ob;
         }
       }
@@ -254,38 +348,33 @@ const sexp = {
       delete state.nodeInfo[serverId];
 
       state.systemInfoMap = { ...state.systemInfoMap };
+    },
+
+    RUN_BATCH: (state, data) => {
+      let bInfo = state.batchActionInfo;
+      bInfo.action = data.action;
+      bInfo.servers = data.servers;
+      bInfo.isRun = true;
+    },
+    STOP_BATCH: (state) => {
+      state.batchActionInfo.isRun = false;
     }
   },
   actions: {
     async GetSystemInfo ({ commit }, data) {
-      const resp = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd: `systemInfo` }
-      });
-
+      const resp = await runPomeloCliCmd('systemInfo');
       if (resp.status === 'success') {
         commit('SET_SYSTEMINFO', resp.data);
       }
     },
     async GetNodeInfo ({ commit }, data) {
-      const resp = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd: `nodeInfo` }
-      });
-
+      const resp = await runPomeloCliCmd('nodeInfo');
       if (resp.status === 'success') {
         commit('SET_NODEINFO', resp.data);
       }
     },
     async GetServers ({ commit }, data) {
-      const resp = await axios({
-        url: '/getAllServers',
-        method: 'get',
-        params: { }
-      });
-
+      const resp = await getServers();
       if (resp.status === 'success') {
         commit('SET_SERVERS', resp.data);
       }
@@ -297,44 +386,97 @@ const sexp = {
         commit('ADD_SERVERS', [servers]);
       }
     },
-    async StopServer ({ commit }, serverId) {
-      const resp = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd: `stop ${serverId}` }
-      });
-
-      if (resp.status === 'success') {
-        commit('UPDATE_SERVERS', { serverId, runStatus: false });
-      }
-
-      return resp;
-    },
-    async StartServer ({ commit }, serInfo) {
-      let cmd = `add host=${serInfo.host} serverType=${serInfo.serverType} id=${serInfo.serverId}`;
-      if (serInfo.port > 0) {
-        cmd += ` port=${serInfo.port}`;
-      }
-
-      if (serInfo.clientPort > 0) {
-        cmd += ` clientPort=${serInfo.clientPort}`;
-      }
-
-      if (serInfo.frontend === true) {
-        cmd += ` frontend=true`;
-      }
-
-      const resp = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd }
-      });
-
-      if (resp.status === 'success') {
-        commit('UPDATE_SERVERS', { serverId: serInfo.serverId, runStatus: true });
+    async StopServer ({ commit }, serverId, forceUpdate = true) {
+      const resp = await runPomeloCliCmd(`stop ${serverId}`);
+      if (resp.status === 'success' && forceUpdate === true) {
+        commit('UPDATE_SERVER', { serverId, runStatus: false });
       }
       return resp;
     },
+    async StartServer ({ commit }, serInfo, forceUpdate = true) {
+      const resp = await startServer(serInfo);
+      if (resp.status === 'success' && forceUpdate === true) {
+        commit('UPDATE_SERVER', { serverId: serInfo.serverId, runStatus: true });
+      }
+      return resp;
+    },
+
+    async BatchStartServer ({ commit, state }, serverIds) {
+      let ls = makeBatchOperaList(state, serverIds, globalCfg.group.startFrontendAfter);
+
+      commit('RUN_BATCH', { action: 'start', servers: ls });
+      let notiKey = 'batchRunKey';
+      for (let it of ls) {
+        if (it.runStatus === false) {
+          let sInfo = state.servers[ it.serverId ];
+          if (sInfo !== undefined) {
+            let ret = await startServer(sInfo);
+            if (ret.status === 'success') {
+              it.runStatus = true;
+              it.actionSta = 1;
+              notification.info({ key: notiKey, message: `${sInfo.serverId} start ok.` });
+            } else {
+              it.actionSta = 2;
+              notification.error({ key: notiKey,
+                message: `${sInfo.serverId} start error.`,
+                description: ret.message
+              });
+            }
+
+            await timeout(3000);
+          }
+        } else {
+          it.actionSta = 1;
+        }
+      }
+
+      commit('STOP_BATCH');
+
+      const resp = await getServers();
+      if (resp.status === 'success') {
+        commit('SET_SERVERS', resp.data, true);
+        commit('UPDATE_SERVERS');
+      }
+    },
+
+    async BatchStopServer ({ commit, state }, serverIds) {
+      let ls = makeBatchOperaList(state, serverIds, globalCfg.group.stopFrontendAfter);
+
+      commit('RUN_BATCH', { action: 'stop', servers: ls });
+      let notiKey = 'batchRunKey';
+      for (let it of ls) {
+        if (it.runStatus === true) {
+          let sInfo = state.servers[ it.serverId ];
+          if (sInfo !== undefined) {
+            let ret = await runPomeloCliCmd(`stop ${sInfo.serverId}`);
+            if (ret.status === 'success') {
+              it.runStatus = false;
+              it.actionSta = 1;
+              notification.info({ key: notiKey, message: `${sInfo.serverId} stop ok.` });
+            } else {
+              it.actionSta = 2;
+              notification.error({ key: notiKey,
+                message: `${sInfo.serverId} stop error.`,
+                description: ret.message
+              });
+            }
+
+            await timeout(3000);
+          }
+        } else {
+          it.actionSta = 1;
+        }
+      }
+
+      commit('STOP_BATCH');
+
+      const resp = await getServers();
+      if (resp.status === 'success') {
+        commit('SET_SERVERS', resp.data, true);
+        commit('UPDATE_SERVERS');
+      }
+    },
+
     async UpdateServer ({ commit }, serverInfo) {
       const resp = await axios({
         url: '/upServerInfo',
@@ -342,7 +484,7 @@ const sexp = {
         data: serverInfo
       });
       if (resp.status === 'success') {
-        commit('UPDATE_SERVERS', serverInfo);
+        commit('UPDATE_SERVER', serverInfo);
       }
       return resp;
     },
@@ -370,7 +512,8 @@ const sexp = {
     },
     sexpNode: state => (id) => {
       return state.systemInfoMap[ state.nodeHostMap[ id ] ].nodes[id];
-    }
+    },
+    sexpBatchInfo: state => state.batchActionInfo
   }
 };
 

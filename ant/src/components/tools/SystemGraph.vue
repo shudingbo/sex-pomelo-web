@@ -54,7 +54,7 @@
               <span v-if="typeof(val) !== 'object'">
                 <template v-if="typeof(val) === 'number'">
                   <template v-if="Number.isInteger(val)">
-                    <a-tag>{{key}}</a-tag>{{val}}
+                    <a-tag>{{key}}</a-tag>{{ (key.indexOf('mem') === -1)?val:(val/1024/1024).toFixed(0)+' MB'}}
                   </template>
                   <template v-else>
                     <a-tag>{{key}}</a-tag>{{val.toFixed(2)}}
@@ -455,7 +455,7 @@ G6.registerNode(TREE_NODE, {
       let msg = '';
 
       if (data.lv === 'sys') {
-        msg = `${(it.cpu_idle < 0) ? 0.99 : it.cpu_idle}`;
+        msg = `${(it.cpu_idle < 0) ? 99 : it.cpu_idle.toFixed(1)}`;
         let ratMem = parseInt(it['free/total'] * 100);
         group.addShape('path', {
           attrs: {
@@ -475,7 +475,7 @@ G6.registerNode(TREE_NODE, {
 
         let cpuIdle = it.cpu_idle;
         if (cpuIdle < 0) { cpuIdle = 0.99; }
-        let ratCpu = parseInt(cpuIdle * 100);
+        let ratCpu = parseInt(cpuIdle);
         group.addShape('path', {
           attrs: {
             startArrow: false,
@@ -701,7 +701,6 @@ export default {
     gData () {
       let o = this.$store.getters.sexpSystemMap;
       let showStatus = this.show.status;
-
       let data = { id: 'sex',
         children: [],
         descr: '',
@@ -718,7 +717,7 @@ export default {
 
         let free = parseInt((it.freemem / 1024 / 1024));
         let rat = it['free/total'].toFixed(2);
-        let msg = `mem ${free}M (${rat}) cpu ${it.cpu_idle}`;
+        let msg = `mem ${free}M (${rat}) cpu ${it.cpu_idle.toFixed(1)}`;
         let nSys = { id: it.ip,
           descr: msg,
           cnt: Object.keys(it.nodes).length,
