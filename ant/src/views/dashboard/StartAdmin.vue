@@ -39,7 +39,7 @@
           <a-tag :color="record.runStatus?'green':''"> {{ text}} </a-tag>
         </template>
         <template slot="slPort" slot-scope="text">
-          <a-tag v-if="text>0" :color="text>0?'green':''"> {{ text}} </a-tag>
+          <a-tag v-if="text>0" :color="text>0?'#722ED1':''"> {{ text}} </a-tag>
         </template>
         <template slot="slSerId" slot-scope="text,record">
           <router-link :to="{path:'/dashboard/serverinfo',query:record}" tag="a" target="_blank">
@@ -94,17 +94,16 @@ export default {
           onFilter: (value, record) => {
             return this.filterFnNor(value, record);
           },
-          sorter: (a, b) => a.serverId - b.serverId
+          sorter: (a, b) => a.serverId.localeCompare(b.serverId)
         },
         { title: 'serverType', dataIndex: 'serverType', width: 140, sorter: (a, b) => a.serverType.localeCompare(b.serverType) },
         { title: 'host', dataIndex: 'host', sorter: (a, b) => a.host.localeCompare(b.host) },
         { title: 'port', dataIndex: 'port', sorter: (a, b) => a.port - b.port },
         { title: 'clientPort', dataIndex: 'clientPort', scopedSlots: { customRender: 'slPort' }, sorter: (a, b) => a.clientPort - b.clientPort },
-        { title: 'frontend', dataIndex: 'frontend', sorter: (a, b) => { return ((a.frontend ? 1 : 0) - (b.frontend ? 1 : 0)); } },
         { title: 'pid', dataIndex: 'pid', sorter: (a, b) => a.pid - b.pid },
         { title: 'heapUsed(M)', dataIndex: 'heapUsed', sorter: (a, b) => a.heapUsed - b.heapUsed },
         { title: 'upTime(m)', dataIndex: 'uptime', sorter: (a, b) => a.upTime - b.upTime },
-        { title: 'Operator', scopedSlots: { customRender: 'slOper' } }
+        { title: 'Operator', scopedSlots: { customRender: 'slOper' }, sorter: (a, b) => (a.runStatus ? 1 : 0) - (b.runStatus ? 1 : 0) }
       ];
       return ServerCloumn;
     },
@@ -132,20 +131,12 @@ export default {
   },
   methods: {
     async stopServer (serverInfo) {
-      let serverId = serverInfo.serverId;
-      const ret = await axios({
-        url: '/pomelo',
-        method: 'get',
-        params: { cmd: `stop ${serverId}` }
-      });
-      if (ret.status === 'success') {
-        // serverInfo.runStatus = false;
-      }
-
+      let ret = await this.$store.dispatch('StopServer', serverInfo.serverId);
       this.axiosMsg(ret);
     },
     async startServer (serverInfo) {
-
+      let ret = await this.$store.dispatch('StartServer', serverInfo);
+      this.axiosMsg(ret);
     },
     filterFnNor (key, it) {
       let szServerID = it.serverId.toString();

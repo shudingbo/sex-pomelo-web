@@ -1,16 +1,15 @@
 <template>
-  <div>
-    <a-badge :count="batchInfo.leftCnt">
-      <a-icon type="bars" @click="runGroup.visable=true" style="font-size: 16px; padding: 4px"/>
-    </a-badge>
-    <a-modal :visible="runGroup.visable" :title="`${batchInfo.action} Servers`"
-      style="top: 20px;"
-      :bodyStyle="{padding: 0}"
-      @ok="()=>{runGroup.visable=false}"
-      @cancel="()=>{runGroup.visable=false}"
-      :footer="null"
-    >
-      <a-table :dataSource="batchInfo.servers" rowKey="serverId" :scroll="{y: 500 }" size="small" :pagination="false">
+  <a-popover
+    v-model="runGroup.visable"
+    placement="bottomRight"
+    overlayClassName="header-notice-wrapper"
+    :autoAdjustOverflow="true"
+    :arrowPointAtCenter="true"
+    :overlayStyle="{ width: '400px', top: '50px' }"
+  >
+    <template slot="content">
+      <h4>{{`Action: ${batchInfo.action} Servers`}}</h4>
+      <a-table  :dataSource="batchInfo.servers" rowKey="serverId" :scroll="{y: 500 }" size="small" :pagination="false">
           <a-table-column title="ServerId" dataIndex="serverId" key="serverId" >
             <template slot-scope="text, record">
               <a-tag :color="record.runStatus?'green':''">{{text}}</a-tag>
@@ -25,8 +24,11 @@
             </template>
           </a-table-column>
       </a-table>
-    </a-modal>
-  </div>
+    </template>
+    <a-badge :count="batchInfo.leftCnt">
+      <a-icon type="bars" @click="runGroup.visable=!runGroup.visable" style="font-size: 16px; padding: 4px"/>
+    </a-badge>
+  </a-popover>
 </template>
 
 <script>
@@ -46,6 +48,7 @@ export default {
   },
   computed: {
     batchInfo () {
+      console.log('bInfo');
       let bInfo = this.$store.getters.sexpBatchInfo;
       if (bInfo.isRun === true) {
         this.runGroup.visable = true;
@@ -63,3 +66,8 @@ export default {
   }
 };
 </script>
+<style lang="css">
+  .header-notice-wrapper {
+    top: 50px !important;
+  }
+</style>
