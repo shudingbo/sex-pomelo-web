@@ -1,18 +1,16 @@
 <template>
   <div>
     <a-badge :count="batchInfo.leftCnt">
-      <a-icon type="bars" @click="runGroup.visable=true"></a-icon>
+      <a-icon type="bars" @click="runGroup.visable=true" style="font-size: 16px; padding: 4px"/>
     </a-badge>
     <a-modal :visible="runGroup.visable" :title="`${batchInfo.action} Servers`"
       style="top: 20px;"
       :bodyStyle="{padding: 0}"
       @ok="()=>{runGroup.visable=false}"
       @cancel="()=>{runGroup.visable=false}"
+      :footer="null"
     >
-      <template slot="footer">
-        <a-button key="submit" type="primary" @click="()=>{runGroup.visable=false}">关闭</a-button>
-      </template>
-      <a-table :dataSource="batchInfo.servers" rowKey="serverId" :scroll="{y: 500 }" size="small">
+      <a-table :dataSource="batchInfo.servers" rowKey="serverId" :scroll="{y: 500 }" size="small" :pagination="false">
           <a-table-column title="ServerId" dataIndex="serverId" key="serverId" >
             <template slot-scope="text, record">
               <a-tag :color="record.runStatus?'green':''">{{text}}</a-tag>
@@ -61,35 +59,6 @@ export default {
 
   },
   methods: {
-    // async startGroup (serverIds) {
-    //   if (this.batchInfo.isRun) {
-    //     this.runGroup.visable = true;
-    //     return;
-    //   }
-
-    //   if (serverIds.length === 0) {
-    //     return;
-    //   }
-
-    //   this.runGroup.visable = true;
-    //   this.$store.dispatch('BatchStartServer', serverIds);
-    // },
-    // async stopGroup (serverIds) {
-    //   if (this.batchInfo.isRun) {
-    //     this.runGroup.visable = true;
-    //     return;
-    //   }
-
-    //   if (serverIds.length === 0) {
-    //     return;
-    //   }
-
-    //   this.runGroup.visable = true;
-    //   this.$store.dispatch('BatchStopServer', serverIds);
-    // },
-    // async show () {
-    //   this.runGroup.visable = true;
-    // }
 
   }
 };

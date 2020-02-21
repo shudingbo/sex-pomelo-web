@@ -1138,22 +1138,7 @@ export default {
               }
             }
           }
-
-          let notiKey = 'sysgrapph.moveto';
-          for (let it of data) {
-            let ret = await this.$store.dispatch('UpdateServer', it);
-            if (ret.status === 'success') {
-              notification.info({ key: notiKey,
-                message: `${it.serverId} MoveTo ok.`,
-                description: `${it.serverId} MoveTo [${it.host}].`
-              });
-            } else {
-              notification.error({ key: notiKey,
-                message: `${it.serverId} MoveTo error.`,
-                description: `${it.serverId} MoveTo [${it.host}] err: ${ret.message}`
-              });
-            }
-          }
+          this.$store.dispatch('BatchRunAction', { action: 'moveto', serverInfos: data });
         } break;
       }
     },

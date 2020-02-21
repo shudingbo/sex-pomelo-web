@@ -149,7 +149,6 @@ const sexp = {
     servers: {},
     systemInfoMap: {},
     nodeHostMap: {}, // node 和 system 映射(存储节点在那个机子上) serverId:host
-    ipHostMap: {}, // ip 和 host 映射表( 对应的ip在那个节点上) ip:host
     batchActionInfo: {
       action: '', // 动作
       isRun: false, // 是否正在运行
@@ -200,27 +199,36 @@ const sexp = {
       state.servers = servers;
       let system = state.systemInfoMap;
       let nodeHostMap = state.nodeHostMap;
-      let ipHostMap = state.ipHostMap;
 
       for (let serId in servers) {
         let sInfo = servers[serId];
         let sysName = nodeHostMap[serId];
         if (sysName === undefined) {
-          sysName = ipHostMap[sInfo.host];
-          if (sysName === undefined) {
+          let sys = system[sInfo.host];
+          if (sys === undefined) {
             let ob = makeSys(sInfo.host);
             system[ob.host] = ob;
-            ipHostMap[sInfo.host] = ob.host;
             nodeHostMap[sInfo.serverId] = ob.host;
             sysName = ob.host;
           } else {
+            sysName = sInfo.host;
             nodeHostMap[serId] = sysName;
+          }
+        } else {
+          // pomelo-admin 会缓存停掉的服务器信息，在服务器停止后更改了host，就会导致出问题
+          if (sysName !== sInfo.host) {
+            // 从老的节点上删除
+            let sysIt = system[ sysName ];
+            delete sysIt.nodes[ serId ];
+
+            // 更换为新的
+            sysName = sInfo.host;
+            nodeHostMap[serId] = sInfo.host;
           }
         }
         let sysIt = system[ sysName ];
         if ((sysIt !== undefined) && (sysIt.nodes[ serId ] !== undefined)) {
           let ser = sysIt.nodes[ serId ];
-          ipHostMap[ sInfo.host ] = sysName;
           sysIt.ip = sInfo.host;
 
           for (let prop in sInfo) {
@@ -254,33 +262,29 @@ const sexp = {
     ADD_SERVERS: (state, servers) => {
       let system = state.systemInfoMap;
       let nodeHostMap = state.nodeHostMap;
-      let ipHostMap = state.ipHostMap;
 
       for (let server of servers) {
         let serId = server.serverId;
         let sInfo = server;
-        let sysName = ipHostMap[sInfo.host];
+        let sys = system[sInfo.host];
 
         let newNode = makeNode(sInfo);
 
-        if (sysName === undefined) {
+        if (sys === undefined) {
           let ob = makeSys(sInfo.host);
-
           ob.nodes[ serId ] = newNode;
           Vue.set(system, ob.host, ob);
 
-          Vue.set(ipHostMap, sInfo.host, ob.host);
           Vue.set(nodeHostMap, sInfo.serverId, ob.host);
-          sysName = ob.host;
           Vue.set(state.systemInfo, ob.host, ob);
           Vue.set(state.nodeInfo, sInfo.serverId, newNode);
           Vue.set(state.servers, sInfo.serverId, newNode);
         } else {
-          Vue.set(state.systemInfoMap[ sysName ].nodes, sInfo.serverId, newNode);
+          Vue.set(state.systemInfoMap[ sInfo.host ].nodes, sInfo.serverId, newNode);
 
           Vue.set(state.nodeInfo, sInfo.serverId, newNode);
           Vue.set(state.servers, sInfo.serverId, newNode);
-          Vue.set(nodeHostMap, sInfo.serverId, sysName);
+          Vue.set(nodeHostMap, sInfo.serverId, sInfo.host);
         }
       }
 
@@ -306,15 +310,13 @@ const sexp = {
       let sNodeInfo = state.nodeInfo[serverId];
       let sSysMap = curSysMap;
       if (needMove === true) {
-        let sysName = state.ipHostMap[serverInfo.host];
-        if (sysName !== undefined) {
-          sSysMap = state.systemInfoMap[sysName];
+        let sys = state.systemInfoMap[serverInfo.host];
+        if (sys !== undefined) {
+          sSysMap = sys;
         } else {
           let ob = makeSys(serverInfo.host);
           state.systemInfoMap[ob.host] = ob;
-          state.ipHostMap[serverInfo.host] = ob.host;
           state.nodeHostMap[serverId] = ob.host;
-          sysName = ob.host;
           sSysMap = ob;
         }
       }
@@ -506,6 +508,63 @@ const sexp = {
         commit('UPDATE_SERVERS');
       }
     },
+    async BatchMoveToServer ({ dispatch, commit, state }, serverInfos) {
+      if (state.batchActionInfo.isRun === true) {
+        return;
+      }
+      if (serverInfos.length === 0) {
+        return;
+      }
+
+      let serverIds = [];
+      let infoMap = {};
+      for (let it of serverInfos) {
+        serverIds.push(it.serverId);
+        infoMap[it.serverId] = it;
+      }
+
+      let ls = makeBatchOperaList(state, serverIds, globalCfg.group.stopFrontendAfter);
+
+      commit('RUN_BATCH', { action: 'moveto', servers: ls });
+      let leftCnt = ls.length;
+      let notiKey = 'batchRunKey';
+      for (let it of ls) {
+        if (it.runStatus === false) {
+          let sInfo = state.servers[ it.serverId ];
+          if (sInfo !== undefined) {
+            let newInfo = infoMap[it.serverId];
+            let ret = await dispatch('UpdateServer', newInfo);
+            if (ret.status === 'success') {
+              it.runStatus = false;
+              it.actionSta = 1;
+              state.nodeHostMap[it.serverId] = newInfo.host;
+              notification.info({ key: notiKey, message: `${sInfo.serverId} MoveTo [${newInfo.host}] ok.` });
+            } else {
+              it.actionSta = 2;
+              notification.error({ key: notiKey,
+                message: `${sInfo.serverId} MoveTo [${newInfo.host}] error`,
+                description: ret.message
+              });
+            }
+
+            await timeout(800);
+          }
+        } else {
+          it.actionSta = 1;
+        }
+
+        leftCnt--;
+        commit('UPDATE_BATCH', { leftCnt });
+      }
+
+      commit('STOP_BATCH');
+
+      const resp = await getServers();
+      if (resp.status === 'success') {
+        commit('SET_SERVERS', resp.data, true);
+        commit('UPDATE_SERVERS');
+      }
+    },
 
     async BatchRunAction ({ dispatch, commit, state }, data) {
       switch (data.action) {
@@ -514,6 +573,9 @@ const sexp = {
         break;
       case 'stop':
         await dispatch('BatchStopServer', data.serverIds);
+        break;
+      case 'moveto':
+        await dispatch('BatchMoveToServer', data.serverInfos);
         break;
       default:break;
       }
@@ -550,7 +612,7 @@ const sexp = {
     sexpServers: state => state.servers,
     sexpSystemMap: state => state.systemInfoMap,
     sexpSystem: state => (id) => {
-      return state.systemInfoMap[ state.ipHostMap[ id ] ];
+      return state.systemInfoMap[ id ];
     },
     sexpNode: state => (id) => {
       return state.systemInfoMap[ state.nodeHostMap[ id ] ].nodes[id];
