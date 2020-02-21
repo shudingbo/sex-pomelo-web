@@ -13,23 +13,12 @@
             <a-button size="small" type="danger" icon="close" title="Delete Current Group"></a-button>
         </a-popconfirm>
         <a-divider type="vertical"/>
-        <template v-if="batchInfo.isRun" >
-          <a-button size="small" type="primary" icon="poweroff" style="margin-right:6px;" title="Stop Current Group" @click="onStopGroup()"></a-button>
-        </template>
-        <template v-else>
-          <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Stop ${this.curSelGroup}`" @confirm="() => onStopGroup()">
-            <a-button size="small" type="primary" icon="poweroff" style="margin-right:6px;" title="Stop Current Group"></a-button>
-          </a-popconfirm>
-        </template>
-        <template v-if="batchInfo.isRun" >
-          <a-button size="small" type="danger" icon="caret-right" style="margin-right:6px;" title="Stop Current Group" @click="onStartGroup()"></a-button>
-        </template>
-        <template v-else>
-          <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Start ${this.curSelGroup}`" @confirm="() => onStartGroup()">
-            <a-button size="small" type="danger" icon="caret-right" title="Start Current Group"></a-button>
-          </a-popconfirm>
-        </template>
-
+        <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Stop ${this.curSelGroup}`" @confirm="() => onStopGroup()">
+          <a-button :disabled="batchInfo.isRun" size="small" type="primary" icon="poweroff" style="margin-right:6px;" title="Stop Current Group"></a-button>
+        </a-popconfirm>
+        <a-popconfirm v-if="curSelGroup.length > 0" :title="`Sure to Start ${this.curSelGroup}`" @confirm="() => onStartGroup()">
+          <a-button :disabled="batchInfo.isRun" size="small" type="danger" icon="caret-right" title="Start Current Group"></a-button>
+        </a-popconfirm>
         <a-divider type="vertical" v-if="curSelGroup.length > 0"/>
         <a-input-search
             placeholder="筛选"
@@ -73,37 +62,15 @@
       >
       </a-input>
     </a-modal>
-    <a-modal :visible="runGroup.visable" :title="`${batchInfo.action} group [${curSelGroup}]`" @ok="()=>{runGroup.visable=false}" @cancel="()=>{runGroup.visable=false}">
-      <template slot="footer">
-        <a-button key="submit" type="primary" @click="()=>{runGroup.visable=false}">关闭</a-button>
-      </template>
-      <a-table :dataSource="batchInfo.servers" rowKey="serverId">
-          <a-table-column title="ServerId" dataIndex="serverId" key="serverId" >
-            <template slot-scope="text, record">
-              <a-tag :color="record.runStatus?'green':''">{{text}}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="actionSta" dataIndex="actionSta" key="actionSta" >
-            <template slot-scope="text, record">
-              <span v-if="record.actionSta===0"><a-icon type="minus" :style="{color:'blue'}"></a-icon> Wait Handler... </span>
-              <span v-else-if="record.actionSta===1"><a-icon  type="check" :style="{color:'green'}"></a-icon> Success</span>
-              <span v-else-if="record.actionSta===3"><a-icon  type="info" :style="{color:'gray'}"></a-icon> Ignore</span>
-              <span v-else><a-icon type="close" :style="{color:'red'}"></a-icon> Error</span>
-            </template>
-          </a-table-column>
-      </a-table>
-    </a-modal>
   </div>
 </template>
 
 <script>
 import { axios } from '@/utils/request';
-
+import Vue from 'vue';
 export default {
   name: 'StartAdmin',
-  components: {
-
-  },
+  components: {},
   data () {
     return {
       filter: [''],
@@ -113,11 +80,7 @@ export default {
       curSelGroup: '', // 当前选择分组
       dlgNewGroupVisable: false,
       newGroupName: '',
-      hasChange: false,
-      runGroup: {
-        visable: false,
-        action: '' // 正在运行的启动组操作类型 stop / start
-      }
+      hasChange: false
     };
   },
   computed: {
@@ -304,11 +267,6 @@ export default {
       this.$message[res.status](res.message);
     },
     async onStartGroup () {
-      if (this.batchInfo.isRun) {
-        this.runGroup.visable = true;
-        return;
-      }
-
       if (this.curSelGroup === '') {
         this.$message.info('当前没有选择分组，请选择分组');
         return;
@@ -318,27 +276,15 @@ export default {
         this.$message.info('当前分组没有保存，请先保存分组');
         return;
       }
-
       if (this.startGroup[this.curSelGroup].length === 0) {
         return;
       }
 
-      this.runGroup.action = 'start';
-      this.runGroup.visable = true;
-      this.$store.dispatch('BatchStartServer', this.startGroup[this.curSelGroup]);
+      this.$store.dispatch('BatchRunAction', { action: 'start', serverIds: this.startGroup[this.curSelGroup] });
     },
     async onStopGroup () {
-      if (this.batchInfo.isRun) {
-        this.runGroup.visable = true;
-        return;
-      }
-
       if (this.curSelGroup === '') {
         this.$message.info('当前没有选择分组，请选择分组');
-        return;
-      }
-
-      if (this.startGroup[this.curSelGroup].length === 0) {
         return;
       }
 
@@ -347,27 +293,12 @@ export default {
         return;
       }
 
-      this.runGroup.action = 'stop';
-      this.runGroup.visable = true;
-      this.$store.dispatch('BatchStopServer', this.startGroup[this.curSelGroup]);
-    },
-    makeActionData () {
-      let data = {};
-      let sers = this.$store.getters.sexpServers;
-      for (let it of this.startGroup[this.curSelGroup]) {
-        let ser = sers[it];
-        data[it] = { serverId: ser.serverId,
-          runStatus: ser.runStatus,
-          actionSta: 0 // 0,等待处理;1,处理完成;2,处理失败
-        };
+      if (this.startGroup[this.curSelGroup].length === 0) {
+        return;
       }
 
-      if (Object.keys(data).length > 0) {
-        return data;
-      }
-      return null;
+      this.$store.dispatch('BatchRunAction', { action: 'stop', serverIds: this.startGroup[this.curSelGroup] });
     }
-
   }
 };
 </script>

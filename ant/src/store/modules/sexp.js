@@ -1,8 +1,11 @@
 
-import { axios } from '@/utils/request';
 import Vue from 'vue';
+
+import { axios } from '@/utils/request';
 import { globalCfg } from '@/config/globalCfg';
 import notification from 'ant-design-vue/es/notification';
+
+notification.config({ placement: 'bottomRight', duration: 2 });
 
 function makeNode (sInfo) {
   return {
@@ -150,6 +153,7 @@ const sexp = {
     batchActionInfo: {
       action: '', // 动作
       isRun: false, // 是否正在运行
+      leftCnt: 0,
       servers: [] // 正在处理的服务器列表
     }
   },
@@ -355,6 +359,11 @@ const sexp = {
       bInfo.action = data.action;
       bInfo.servers = data.servers;
       bInfo.isRun = true;
+      bInfo.leftCnt = data.servers.length;
+    },
+    UPDATE_BATCH: (state, info) => {
+      let bInfo = state.batchActionInfo;
+      bInfo.leftCnt = info.leftCnt;
     },
     STOP_BATCH: (state) => {
       state.batchActionInfo.isRun = false;
@@ -402,9 +411,17 @@ const sexp = {
     },
 
     async BatchStartServer ({ commit, state }, serverIds) {
+      if (state.batchActionInfo.isRun === true) {
+        return;
+      }
+      if (serverIds.length === 0) {
+        return;
+      }
+
       let ls = makeBatchOperaList(state, serverIds, globalCfg.group.startFrontendAfter);
 
       commit('RUN_BATCH', { action: 'start', servers: ls });
+      let leftCnt = ls.length;
       let notiKey = 'batchRunKey';
       for (let it of ls) {
         if (it.runStatus === false) {
@@ -422,12 +439,14 @@ const sexp = {
                 description: ret.message
               });
             }
-
             await timeout(3000);
           }
         } else {
           it.actionSta = 1;
         }
+
+        leftCnt--;
+        commit('UPDATE_BATCH', { leftCnt });
       }
 
       commit('STOP_BATCH');
@@ -440,9 +459,17 @@ const sexp = {
     },
 
     async BatchStopServer ({ commit, state }, serverIds) {
+      if (state.batchActionInfo.isRun === true) {
+        return;
+      }
+      if (serverIds.length === 0) {
+        return;
+      }
+
       let ls = makeBatchOperaList(state, serverIds, globalCfg.group.stopFrontendAfter);
 
       commit('RUN_BATCH', { action: 'stop', servers: ls });
+      let leftCnt = ls.length;
       let notiKey = 'batchRunKey';
       for (let it of ls) {
         if (it.runStatus === true) {
@@ -461,11 +488,14 @@ const sexp = {
               });
             }
 
-            await timeout(3000);
+            await timeout(1500);
           }
         } else {
           it.actionSta = 1;
         }
+
+        leftCnt--;
+        commit('UPDATE_BATCH', { leftCnt });
       }
 
       commit('STOP_BATCH');
@@ -474,6 +504,18 @@ const sexp = {
       if (resp.status === 'success') {
         commit('SET_SERVERS', resp.data, true);
         commit('UPDATE_SERVERS');
+      }
+    },
+
+    async BatchRunAction ({ dispatch, commit, state }, data) {
+      switch (data.action) {
+      case 'start':
+        await dispatch('BatchStartServer', data.serverIds);
+        break;
+      case 'stop':
+        await dispatch('BatchStopServer', data.serverIds);
+        break;
+      default:break;
       }
     },
 

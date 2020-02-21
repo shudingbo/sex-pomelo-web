@@ -2,6 +2,7 @@
   <div class="user-wrapper">
     <div class="content-box">
       <notice-icon class="action"/>
+      <sex-pomelo-batchrun ref="batchRun11" class="action"/>
       <a-dropdown>
         <span class="action ant-dropdown-link user-dropdown-menu">
           <a-avatar class="avatar" size="small" :src="avatar"/>
@@ -27,12 +28,14 @@
 
 <script>
 import NoticeIcon from '@/components/NoticeIcon';
+import BatchRun from '@/components/tools/BatchRun';
 import { mapActions, mapGetters } from 'vuex';
 
 export default {
   name: 'UserMenu',
   components: {
-    NoticeIcon
+    NoticeIcon,
+    'sex-pomelo-batchrun': BatchRun
   },
   computed: {
     ...mapGetters(['nickname', 'avatar'])

@@ -101,13 +101,13 @@
         </a-menu>
         <a-menu size="small" id="contextMenuSys" style="display:none;position: fixed;" theme="dark"
         @click="handleMenuSysClick">
-          <a-menu-item key="StopAll" :disabled="true"><a-icon type="poweroff" />Stop All</a-menu-item>
-          <a-menu-item key="StartAll" :disabled="true"><a-icon type="caret-right" />Start All</a-menu-item>
+          <a-menu-item key="StopAll"><a-icon type="poweroff" />Stop All</a-menu-item>
+          <a-menu-item key="StartAll"><a-icon type="caret-right" />Start All</a-menu-item>
         </a-menu>
         <a-menu size="small" id="contextMenuType" style="display:none;position: fixed;" theme="dark"
         @click="handleMenuTypeClick">
-          <a-menu-item key="StopAll" :disabled="true"><a-icon type="poweroff" />Stop All</a-menu-item>
-          <a-menu-item key="StartAll" :disabled="true"><a-icon type="caret-right" />Start All</a-menu-item>
+          <a-menu-item key="StopAll"><a-icon type="poweroff" />Stop All</a-menu-item>
+          <a-menu-item key="StartAll"><a-icon type="caret-right" />Start All</a-menu-item>
           <a-sub-menu title="MoveTo" key="MoveTo" >
             <a-menu-item v-for="i in systems" :key="i" :value="i">{{i}}</a-menu-item>
           </a-sub-menu>
@@ -118,6 +118,7 @@
 
 <script>
 import { axios } from '@/utils/request';
+import notification from 'ant-design-vue/es/notification';
 import G6 from '@antv/g6';
 
 let ipHideTimer;
@@ -1081,29 +1082,99 @@ export default {
       }
     },
     handleMenuSysClick (e) {
-      console.log(e);
-      console.log(this.curSelNode);
-      console.log(this.curSelNodeData);
-      if (this.curSelNode !== null) {
-        // switch (e.key) {
-        // case 'Stop': this.stopServer(this.curSelNode); break;
-        // case 'Start': this.startServer(this.curSelNode); break;
-        // case 'Edit': this.showEditDlg(this.curSelNode); break;
-        // }
+      if (this.curSelNode === null) { return; }
+
+      let serverIds = this.getSysChildServerIds(this.curSelNode);
+      switch (e.key) {
+      case 'StopAll':
+        this.$store.dispatch('BatchRunAction', { action: 'stop', serverIds });
+        break;
+      case 'StartAll':
+        this.$store.dispatch('BatchRunAction', { action: 'start', serverIds });
+        break;
       }
     },
-    handleMenuTypeClick (e) {
-      console.log(e);
-      console.log(this.curSelNode);
-      console.log(this.curSelNodeData);
+    async handleMenuTypeClick (e) {
+      if (this.curSelNodeData === null) { return; }
+      let serverIds = this.getTypeChildServerIds(this.curSelNodeData);
 
-      if (this.curSelNode !== null) {
-        // switch (e.key) {
-        // case 'Stop': this.stopServer(this.curSelNode); break;
-        // case 'Start': this.startServer(this.curSelNode); break;
-        // case 'Edit': this.showEditDlg(this.curSelNode); break;
-        // }
+      let cmd = e.key;
+      if (e.keyPath.length > 1) {
+        cmd = e.keyPath[e.keyPath.length - 1];
       }
+
+      switch (cmd) {
+      case 'StopAll':
+        this.$store.dispatch('BatchRunAction', { action: 'stop', serverIds });
+        break;
+      case 'StartAll':
+        this.$store.dispatch('BatchRunAction', { action: 'start', serverIds });
+        break;
+      case 'MoveTo':
+        {
+          let newHost = e.key;
+          let servers = this.$store.getters.sexpServers;
+          let data = [];
+          for (let ser of this.curSelNodeData.children) {
+            let sInfo = servers[ser.id];
+            if (sInfo !== undefined) {
+              if (sInfo.runStatus === true) {
+                this.$message.warn(`${ser.id} is Run,can't move run server`);
+                return;
+              } else {
+                const { serverId, host, serverType, port, frontend, clientPort } = sInfo;
+                if (host === newHost) {
+                  continue;
+                }
+                let newData = {
+                  serverId,
+                  serverType,
+                  port,
+                  frontend,
+                  clientPort,
+                  host: newHost
+                };
+                data.push(newData);
+              }
+            }
+          }
+
+          let notiKey = 'sysgrapph.moveto';
+          for (let it of data) {
+            let ret = await this.$store.dispatch('UpdateServer', it);
+            if (ret.status === 'success') {
+              notification.info({ key: notiKey,
+                message: `${it.serverId} MoveTo ok.`,
+                description: `${it.serverId} MoveTo [${it.host}].`
+              });
+            } else {
+              notification.error({ key: notiKey,
+                message: `${it.serverId} MoveTo error.`,
+                description: `${it.serverId} MoveTo [${it.host}] err: ${ret.message}`
+              });
+            }
+          }
+        } break;
+      }
+    },
+    getSysChildServerIds (nodeData) {
+      let ids = [];
+      for (let serId in nodeData.nodes) {
+        if (serId.indexOf('master') === -1) {
+          ids.push(serId);
+        }
+      }
+      return ids;
+    },
+    getTypeChildServerIds (nodeData) {
+      let ids = [];
+      if (nodeData.children instanceof Array) {
+        for (let it of nodeData.children) {
+          ids.push(it.id);
+        }
+      }
+
+      return ids;
     }
   },
   watch: {

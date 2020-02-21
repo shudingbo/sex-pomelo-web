@@ -69,7 +69,6 @@
 <script>
 import { axios } from '@/utils/request';
 import SystemGraph from '@/components/tools/SystemGraph';
-import G6 from '@antv/g6';
 
 const sysColumns = [
   { title: 'host', dataIndex: 'hostname', scopedSlots: { customRender: 'slHost' } },
