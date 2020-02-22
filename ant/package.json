@@ -1,7 +1,26 @@
 {
   "name": "sex-pomelo-web",
-  "version": "0.0.1",
-  "private": false,
+  "version": "0.0.2",
+  "homepage": "https://github.com/shudingbo/sex-pomelo-web",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shudingbo/sex-pomelo-web"
+  },
+  "bugs": {
+    "url": "https://github.com/shudingbo/sex-pomelo-web/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT"
+    }
+  ],
+  "keywords": [
+    "pomelo",
+    "pomelo-cli",
+    "sex-pomelo",
+    "sex-pomelo-cli",
+    "web"
+  ],
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
@@ -56,8 +75,5 @@
     "vue-template-compiler": "^2.6.10",
     "webpack-theme-color-replacer": "1.2.20"
   },
-  "collective": {
-    "type": "opencollective",
-    "url": "https://opencollective.com/ant-design-pro-vue"
-  }
+  "author": "shudingbo"
 }
