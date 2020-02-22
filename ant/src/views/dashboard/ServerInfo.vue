@@ -39,11 +39,15 @@ export default {
       loginInfo: {}
     };
   },
-  mounted () {
+  created () {
     this.serInfo = this.$route.query;
     this.setSexpContext(this.serInfo.serverId);
-
-    this.getLoginInfo();
+  },
+  mounted () {
+    console.log(this.serInfo);
+    if (this.serInfo.frontend === true) {
+      this.getLoginInfo();
+    }
   },
   methods: {
     async getLoginInfo () {
