@@ -351,12 +351,50 @@ export default {
         // To do :
         // Make a better tabulation integration
         e.preventDefault();
-        this.writeToInput('    '); //
+        if (this.autoComplete() === false) {
+          this.writeToInput(' '); //
+        }
       } else if (printableKeys) { // Printable keys (a,b,c ...)
         // if (this.input.length >= this.inputLimit) return;
         this.writeToInput(e.key);
         if (this.commandsHistoryIndex > 0) { this.commandsHistory[this.commandsHistoryIndex - 1] = this.input; } else this.savedInput = this.input;
       }
+    },
+
+    autoComplete () {
+      if (this.input.length < 1) {
+        return false;
+      }
+      let cmds = this.input.split(' ');
+      if (cmds.length > 1) {
+        let cmd = cmds[0];
+        let comd = cmds[1];
+        switch (cmd) {
+        case 'use':
+          {
+            let c = this.$store.getters.sexpServers;
+            let serIds = [];
+            for (let it in c) {
+              if (c[it].runStatus === true) {
+                serIds.push(it);
+              }
+            }
+            let autoC = serIds.filter((v) => {
+              return (v.indexOf(comd) === 0) && (v.indexOf('master') === -1);
+            });
+            if (autoC.length === 1) {
+              this.updateInput(`use ${autoC[0]}`);
+              return true;
+            } else if (autoC.length > 1) {
+              let msg = '\\color:#00CED1; ' + 'Use \n' + autoC.join(' ');
+              this.$emit('write', msg);
+              return true;
+            }
+          }
+          break;
+        }
+      }
+      return false;
     }
   },
 

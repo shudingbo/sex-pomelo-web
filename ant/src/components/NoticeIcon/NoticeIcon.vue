@@ -65,9 +65,22 @@ export default {
         {
           let len = commandArgs.length;
           if (len === 2) {
-            this.setSexpContext(commandArgs[1]);
-            this.sign = this.getSexpContext() + '$';
-            this.context = this.getSexpContext();
+            let c = this.$store.getters.sexpServers;
+            let serIds = [];
+            for (let it in c) {
+              if (c[it].runStatus === true) {
+                serIds.push(it);
+              }
+            }
+
+            if (serIds.indexOf(commandArgs[1]) === -1) {
+              let msg = `\\color:#FF8033; server ${commandArgs[1]} not exists`;
+              this.terminal.$emit('write', msg);
+            } else {
+              this.setSexpContext(commandArgs[1]);
+              this.sign = this.getSexpContext() + '$';
+              this.context = this.getSexpContext();
+            }
           } else if (len === 1) {
             this.sendCmd(command);
           } else {
@@ -133,6 +146,9 @@ export default {
           }
         } else {
           if (typeof (cb) !== 'function') {
+            if (typeof (msg) === 'object') {
+              msg = JSON.stringify(msg, null, 1);
+            }
             msg = '\\color:#FF8033; ' + msg;
           }
         }

@@ -27,7 +27,11 @@ Vue.prototype.axiosMsg = function (res) {
     if (typeof (msg.message) === 'string') {
       msg = msg.message;
     } else {
-      msg = msg.toString();
+      if (typeof (msg) === 'object') {
+        msg = JSON.stringify(msg, 2);
+      } else {
+        msg = msg.toString();
+      }
     }
   }
 
