@@ -48,7 +48,6 @@ export default {
   },
   computed: {
     batchInfo () {
-      console.log('bInfo');
       let bInfo = this.$store.getters.sexpBatchInfo;
       if (bInfo.isRun === true) {
         this.runGroup.visable = true;

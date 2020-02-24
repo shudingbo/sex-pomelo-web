@@ -26,7 +26,7 @@
             size="small"
           >
             <template slot="slSerId" slot-scope="text,record">
-              <router-link :to="{path:'/dashboard/serverinfo',query:record}" tag="a" target="_blank">
+              <router-link :to="{path:'/dashboard/serverinfo',query:{serverId:record.serverId}}" tag="a">
                 <a-tag>{{text}}</a-tag>
               </router-link>
             </template>

@@ -48,6 +48,7 @@
               </a-button>
             </a-popconfirm>
             <a-button style="margin-left:6px;" v-if="curSelNode.runStatus===false" type="dashed" size="small" shape="circle" icon="edit" @click="showEditDlg(curSelNode)"></a-button>
+            <a-button style="margin-left:6px;" type="dashed" size="small" shape="circle" icon="info" @click="onDetailInfo(curSelNode)" title="Goto Server Info page."></a-button>
           </div>
           <ul style="font-size:10px">
             <li v-for="(val,key) in curSelNode" :key="key">
@@ -98,6 +99,7 @@
           <a-menu-item key="Start" v-if="curSelNode && curSelNode.runStatus===false"><a-icon type="caret-right" />Start</a-menu-item>
           <a-menu-item key="Edit" v-if="curSelNode && curSelNode.runStatus===false"><a-icon type="edit" />Edit</a-menu-item>
           <a-menu-item key="Delete" v-if="curSelNode && curSelNode.runStatus===false"><a-icon type="close" />Delete</a-menu-item>
+          <a-menu-item key="Info" v-if="curSelNode && curSelNode.runStatus"><a-icon type="info" />Info</a-menu-item>
         </a-menu>
         <a-menu size="small" id="contextMenuSys" style="display:none;position: fixed;" theme="dark"
         @click="handleMenuSysClick">
@@ -1059,9 +1061,9 @@ export default {
     },
     handleMenuNodeClick (e) {
       if (this.curSelNode !== null) {
-        if (e.key === 'Edit') {
-          this.showEditDlg(this.curSelNode);
-          return;
+        switch (e.key) {
+        case 'Edit':this.showEditDlg(this.curSelNode); return;
+        case 'Info': this.onDetailInfo(this.curSelNode); return;
         }
 
         let self = this;
@@ -1160,6 +1162,13 @@ export default {
       }
 
       return ids;
+    },
+    onDetailInfo (ser) {
+      console.log(ser);
+      this.$router.push({
+        path: '/dashboard/serverinfo',
+        query: { serverId: ser.serverId }
+      });
     }
   },
   watch: {

@@ -1,17 +1,26 @@
 <template>
   <div>
-    <a-row>
+    <a-row v-if="serverId" :gutter="16">
       <a-col :span="6">
-        <a-card title="Server Info">
-          <table style="margin:3px;">
-            <tr><td class="colName">serverId</td><td class="colVal"><a-tag>{{serInfo.serverId}}</a-tag></td></tr>
+        <a-card :title="serverId">
+          <template slot="extra">
+            <a-button icon="double-left" @click="$router.back()" style="margin-right:6px;" type="dashed" size="small" title="Back"></a-button>
+            <a-popconfirm v-if="serInfo.runStatus" :title="`Sure to Stop ${this.serverId}`" @confirm="() => stopServer()">
+              <a-button :disabled="serInfo.isRun" size="small" type="primary" icon="poweroff" style="margin-right:6px;" title="Stop Current Group"></a-button>
+            </a-popconfirm>
+            <a-popconfirm v-else :title="`Sure to Start ${this.serverId}`" @confirm="() => startServer()">
+              <a-button :disabled="serInfo.isRun" size="small" type="danger" icon="caret-right" title="Start Current Group"></a-button>
+            </a-popconfirm>
+          </template>
+          <table style="margin:0px;">
+            <tr><td class="colName">Time</td><td class="colVal"><a-tag>{{serInfo.time}}</a-tag></td></tr>
             <tr><td class="colName">serverType</td><td class="colVal"><a-tag>{{serInfo.serverType}}</a-tag></td></tr>
             <tr><td class="colName">host</td><td class="colVal"><a-tag>{{serInfo.host}}</a-tag></td></tr>
             <tr><td class="colName">port</td><td class="colVal"><a-tag>{{serInfo.port}}</a-tag></td></tr>
             <tr><td class="colName">clientPort</td><td class="colVal"><a-tag>{{serInfo.clientPort}}</a-tag></td></tr>
             <tr><td class="colName">frontend</td><td class="colVal"><a-tag>{{serInfo.frontend}}</a-tag></td></tr>
             <tr><td colspan="2" class="colTitle">Runtime Status</td></tr>
-            <tr><td class="colName">runStatus</td><td class="colVal"><a-tag :color="serInfo.runStatus==='true'?'green':''">{{serInfo.runStatus}}</a-tag></td></tr>
+            <tr><td class="colName">runStatus</td><td class="colVal"><a-tag :color="serInfo.runStatus?'green':''">{{serInfo.runStatus}}</a-tag></td></tr>
             <tr><td class="colName">pid</td><td class="colVal"><a-tag>{{serInfo.pid}}</a-tag></td></tr>
             <tr><td class="colName">heapUsed(M)</td><td class="colVal"><a-tag>{{ serInfo.heapUsed}}</a-tag></td></tr>
             <tr><td class="colName">uptime(m)</td><td class="colVal"><a-tag>{{ serInfo.uptime}}</a-tag></td></tr>
@@ -19,11 +28,17 @@
         </a-card>
       </a-col>
       <a-col :span="18">
-        <a-card title="Server CMD">
-        </a-card>
+        <a-tabs defaultActiveKey="base" >
+          <a-tab-pane tab="Base Info" key="base">Content of Tab Pane 1</a-tab-pane>
+          <a-tab-pane v-if="serInfo.frontend" tab="Connections" key="connect" forceRender>Content of Tab Pane 2</a-tab-pane>
+          <a-tab-pane tab="Script" key="script">Content of Tab Pane 3</a-tab-pane>
+        </a-tabs>
+
       </a-col>
     </a-row>
-
+    <div v-else>
+      <h2>No serverInfo</h2>
+    </div>
   </div>
 </template>
 <script>
@@ -35,16 +50,21 @@ export default {
   },
   data () {
     return {
-      serInfo: {},
+      serverId: '',
       loginInfo: {}
     };
   },
+  computed: {
+    serInfo () {
+      return this.$store.getters.sexpNode(this.serverId);
+    }
+  },
   created () {
-    this.serInfo = this.$route.query;
-    this.setSexpContext(this.serInfo.serverId);
+    this.serverId = this.$route.query.serverId;
+    this.setSexpContext(this.serverId);
+    console.log(this.serInfo);
   },
   mounted () {
-    console.log(this.serInfo);
     if (this.serInfo.frontend === true) {
       this.getLoginInfo();
     }
@@ -63,10 +83,25 @@ export default {
       }
 
       this.axiosMsg(ret);
+    },
+    async stopServer () {
+      let ret = await this.$store.dispatch('StopServer', this.serInfo.serverId);
+      this.axiosMsg(ret);
+    },
+    async startServer () {
+      let ret = await this.$store.dispatch('StartServer', this.serInfo);
+      this.axiosMsg(ret);
     }
   }
 };
 </script>
+
+<style>
+.ant-card-body {
+  padding: 6px;
+}
+</style>
+
 <style scoped>
 div .ant-card-head-title {
   padding: '0px';

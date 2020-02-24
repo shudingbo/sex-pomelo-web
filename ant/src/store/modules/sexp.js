@@ -615,7 +615,11 @@ const sexp = {
       return state.systemInfoMap[ id ];
     },
     sexpNode: state => (id) => {
-      return state.systemInfoMap[ state.nodeHostMap[ id ] ].nodes[id];
+      if (state.nodeHostMap[ id ] !== undefined) {
+        return state.systemInfoMap[ state.nodeHostMap[ id ] ].nodes[id];
+      }
+
+      return {};
     },
     sexpBatchInfo: state => state.batchActionInfo
   }
