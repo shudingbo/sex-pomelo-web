@@ -66,11 +66,16 @@ async function getServers () {
   return resp;
 };
 
-async function runPomeloCliCmd (cmd) {
+/** Run pomelo-cli command
+ *
+ * @param {string} cmd command
+ * @param {string} context run context
+ */
+async function runPomeloCliCmd (cmd, context = 'all') {
   let resp = await axios({
     url: '/pomelo',
     method: 'get',
-    params: { cmd }
+    params: { cmd, context }
   });
   return resp;
 };
@@ -154,6 +159,9 @@ const sexp = {
       isRun: false, // 是否正在运行
       leftCnt: 0,
       servers: [] // 正在处理的服务器列表
+    },
+    serverDetailInfo: {
+
     }
   },
   mutations: {
@@ -369,6 +377,9 @@ const sexp = {
     },
     STOP_BATCH: (state) => {
       state.batchActionInfo.isRun = false;
+    },
+    SET_SERVER_DETAL: (state, detail) => {
+      Vue.set(state.serverDetailInfo, detail.serverId, detail);
     }
   },
   actions: {
@@ -604,6 +615,23 @@ const sexp = {
       }
 
       return resp;
+    },
+
+    async GetServerDetail ({ commit, state }, serverId) {
+      if (state.serverDetailInfo[serverId] !== undefined) {
+        return { code: 0, status: 'success', message: 'success' };
+      }
+
+      const resp = await axios({
+        url: '/getServerDetailInfo',
+        method: 'get',
+        params: { serverId }
+      });
+      if (resp.status === 'success') {
+        resp.data.serverId = serverId;
+        commit('SET_SERVER_DETAL', resp.data);
+      }
+      return resp;
     }
   },
   getters: {
@@ -621,7 +649,15 @@ const sexp = {
 
       return {};
     },
-    sexpBatchInfo: state => state.batchActionInfo
+    sexpBatchInfo: state => state.batchActionInfo,
+    sexpServerDetail: state => (serverId) => {
+      let ret = state.serverDetailInfo[serverId];
+      if (ret === undefined) {
+        return { handler: {}, modules: [], components: {}, proxy: {}, settings: {} };
+      } else {
+        return ret;
+      }
+    }
   }
 };
 

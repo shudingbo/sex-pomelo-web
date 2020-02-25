@@ -28,9 +28,29 @@
         </a-card>
       </a-col>
       <a-col :span="18">
-        <a-tabs defaultActiveKey="base" >
-          <a-tab-pane tab="Base Info" key="base">Content of Tab Pane 1</a-tab-pane>
-          <a-tab-pane v-if="serInfo.frontend" tab="Connections" key="connect" forceRender>Content of Tab Pane 2</a-tab-pane>
+        <a-tabs defaultActiveKey="base" type="card" >
+          <a-tab-pane tab="Base Info" key="base">
+            <a-tabs tabPosition="top" defaultActiveKey="Handler" >
+              <a-tab-pane tab="Handler" key="Handler">
+                <pre >{{JSON.stringify(detailInfo.handler, null,1)}}</pre>
+              </a-tab-pane>
+              <a-tab-pane tab="Modules" key="Modules">
+                <pre>{{JSON.stringify(detailInfo.modules, null,1)}}</pre>
+              </a-tab-pane>
+              <a-tab-pane tab="Components" key="Components">
+                <pre>{{JSON.stringify(detailInfo.components, null,1)}}</pre>
+              </a-tab-pane>
+              <a-tab-pane tab="Settings" key="Settings">
+                <pre>{{JSON.stringify(detailInfo.settings, null,1)}}</pre>
+              </a-tab-pane>
+              <a-tab-pane tab="Proxy" key="Proxy">
+                <pre>{{JSON.stringify(detailInfo.proxy, null,1)}}</pre>
+              </a-tab-pane>
+            </a-tabs>
+          </a-tab-pane>
+          <a-tab-pane v-if="serInfo.frontend" tab="Connections" key="connect" forceRender>
+            <pre>{{JSON.stringify(loginInfo, null,1)}}</pre>
+          </a-tab-pane>
           <a-tab-pane tab="Script" key="script">Content of Tab Pane 3</a-tab-pane>
         </a-tabs>
 
@@ -57,32 +77,45 @@ export default {
   computed: {
     serInfo () {
       return this.$store.getters.sexpNode(this.serverId);
+    },
+    detailInfo () {
+      return this.$store.getters.sexpServerDetail(this.serverId);
     }
   },
   created () {
     this.serverId = this.$route.query.serverId;
     this.setSexpContext(this.serverId);
-    console.log(this.serInfo);
   },
   mounted () {
-    if (this.serInfo.frontend === true) {
-      this.getLoginInfo();
-    }
+    (async () => {
+      await this.getDetailInfo();
+      await this.getLoginInfo();
+    })();
   },
   methods: {
     async getLoginInfo () {
+      if (this.serInfo.frontend === false || this.serInfo.runStatus === false) {
+        return;
+      }
+
       const ret = await axios({
         url: '/pomelo',
         method: 'get',
-        params: { cmd: `show logins`, context: this.serInfo.serverId }
+        params: { cmd: `show connections`, context: this.serInfo.serverId }
       });
 
-      console.log(ret);
       if (ret.status === 'success') {
-
+        this.loginInfo = ret.data[this.serInfo.serverId];
       }
 
       this.axiosMsg(ret);
+    },
+    async getDetailInfo () {
+      if (this.serInfo.runStatus === false) {
+        return;
+      }
+
+      this.$store.dispatch('GetServerDetail', this.serInfo.serverId);
     },
     async stopServer () {
       let ret = await this.$store.dispatch('StopServer', this.serInfo.serverId);

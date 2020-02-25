@@ -105,6 +105,47 @@ class PomeloService extends Service {
 
     return [];
   }
+
+  /** get serverType by serberId
+   *
+   * @param {string} serverId serverId
+   * @return {string} serverType
+   */
+  getServerType(serverId) {
+    let serverType = serverId.split('-')[0];
+    if (serverType === serverId) {
+      serverType = serverId.split('_')[0];
+    }
+    return serverType;
+  }
+
+  async getServerSetting(serverId) {
+    const rSetting = await this.app.pomelo.runAction('show settings', serverId);
+    if (rSetting.status === true) {
+      delete rSetting.data.servers;
+      return rSetting.data;
+    }
+
+    return {};
+  }
+
+  async getServerConnections(serverId) {
+    const ret = await this.app.pomelo.runAction('show connections', serverId);
+    if (ret.status === true) {
+      return ret.data;
+    }
+
+    return {};
+  }
+
+  async getServerConnectionInfo(serverId) {
+    const ret = await this.app.pomelo.runAction('show connectionInfo', serverId);
+    if (ret.status === true) {
+      return ret.data;
+    }
+
+    return {};
+  }
 }
 
 module.exports = PomeloService;

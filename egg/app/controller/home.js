@@ -53,7 +53,6 @@ class HomeController extends Controller {
     }
 
     const regServers = await this.service.pomelo.pomelo.GetRegServers();
-    // console.log(regServers);
 
     // 检测未注册的
     const modifyServer = {};
@@ -201,6 +200,58 @@ class HomeController extends Controller {
     const body = ctx.request.body;
     await this.service.pomelo.pomelo.deleteGroup(body.name);
     ctx.success = { message: `${body.name} delete Success!` };
+  }
+
+  async getServerDetailInfo() {
+    const { ctx } = this;
+    const serverId = ctx.query.serverId;
+    if (typeof (serverId) !== 'string') {
+      ctx.error = { message: `serverId: [${serverId}] Error.` };
+      return;
+    }
+
+    const ret = {};
+    const rHandler = await this.app.pomelo.runAction('show handler', serverId);
+    if (rHandler.status === false) {
+      ctx.error = { message: rHandler.message };
+      return;
+    }
+
+    const serverType = this.service.pomelo.pomelo.getServerType(serverId);
+    ret.handler = rHandler.data[serverType];
+
+    const rModules = await this.app.pomelo.runAction('show modules', serverId);
+    ret.modules = rModules.data;
+
+    const rComponents = await this.app.pomelo.runAction('show components', serverId);
+    ret.components = rComponents.data;
+
+    const rProxy = await this.app.pomelo.runAction('show proxy', serverId);
+    ret.proxy = rProxy.data[serverType];
+
+    const rSetting = await this.service.pomelo.pomelo.getServerSetting(serverId);
+    ret.settings = rSetting;
+
+    ctx.success = ret;
+  }
+
+  async getServerConnection() {
+    const { ctx } = this;
+    const serverId = ctx.query.serverId;
+    if (typeof (serverId) !== 'string') {
+      ctx.error = { message: `serverId: [${serverId}] Error.` };
+      return;
+    }
+  }
+
+
+  async getServerSetting() {
+    const { ctx } = this;
+    const serverId = ctx.query.serverId;
+    if (typeof (serverId) !== 'string') {
+      ctx.error = { message: `serverId: [${serverId}] Error.` };
+      return;
+    }
   }
 
 }

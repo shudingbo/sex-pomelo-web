@@ -15,4 +15,5 @@ module.exports = app => {
   router.get('/getAllStartGroup', controller.home.getAllStartGroup);
   router.post('/saveStartGroup', controller.home.saveStartGroup);
   router.delete('/deleteStartGroup', controller.home.deleteStartGroup);
+  router.get('/getServerDetailInfo', controller.home.getServerDetailInfo);
 };
