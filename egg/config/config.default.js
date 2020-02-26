@@ -28,7 +28,7 @@ module.exports = appInfo => {
   config.redis = {
     client: {
       port: 6379,
-      host: '127.0.0.1',
+      host: '192.168.2.10',
       password: null,
       db: 3,
     },
@@ -37,18 +37,11 @@ module.exports = appInfo => {
   config.pomelo = {
     client: {
       master: {
-        host: '127.0.0.1',
+        host: '192.168.2.13',
         port: 3005,
         username: 'admin',
         password: 'admin',
       },
-      port: 6379,
-      host: '127.0.0.1',
-      // password: null,
-      db: 2,
-      keyPre: 'sdb:schedule',
-      checkInterval: 5000,
-      // redisInstanseName: 'redis',
     },
   };
 
@@ -78,7 +71,7 @@ module.exports = appInfo => {
     ...userConfig,
     customLogger: {
       pomeloLogger: {
-        consoleLevel: 'DEBUG',
+        consoleLevel: 'INFO',
         file: 'egg-pomelo.log',
       },
     },

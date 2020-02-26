@@ -21,9 +21,16 @@
             <tr><td class="colName">frontend</td><td class="colVal"><a-tag>{{serInfo.frontend}}</a-tag></td></tr>
             <tr><td colspan="2" class="colTitle">Runtime Status</td></tr>
             <tr><td class="colName">runStatus</td><td class="colVal"><a-tag :color="serInfo.runStatus?'green':''">{{serInfo.runStatus}}</a-tag></td></tr>
+            <tr><td class="colName">uptime(m)</td><td class="colVal"><a-tag>{{ serInfo.uptime}}</a-tag></td></tr>
             <tr><td class="colName">pid</td><td class="colVal"><a-tag>{{serInfo.pid}}</a-tag></td></tr>
             <tr><td class="colName">heapUsed(M)</td><td class="colVal"><a-tag>{{ serInfo.heapUsed}}</a-tag></td></tr>
-            <tr><td class="colName">uptime(m)</td><td class="colVal"><a-tag>{{ serInfo.uptime}}</a-tag></td></tr>
+            <tr><td class="colName">cpuAvg</td><td class="colVal"><a-tag>{{ serInfo.cpuAvg}}</a-tag></td></tr>
+            <tr><td class="colName">memAvg</td><td class="colVal"><a-tag>{{ serInfo.memAvg}}</a-tag></td></tr>
+            <tr><td class="colName">vsz(M)</td><td class="colVal"><a-tag>{{ parseInt(serInfo.vsz/1024/1024)}}</a-tag></td></tr>
+            <tr><td class="colName">rss(M)</td><td class="colVal"><a-tag>{{ parseInt(serInfo.vsz/1024/1024)}}</a-tag></td></tr>
+            <tr><td class="colName">usr(M)</td><td class="colVal"><a-tag>{{ parseInt(serInfo.usr/1024/1024)}}</a-tag></td></tr>
+            <tr><td class="colName">sys</td><td class="colVal"><a-tag>{{ serInfo.sys}}</a-tag></td></tr>
+            <tr><td class="colName">gue</td><td class="colVal"><a-tag>{{ serInfo.gue}}</a-tag></td></tr>
           </table>
         </a-card>
       </a-col>
@@ -32,26 +39,56 @@
           <a-tab-pane tab="Base Info" key="base">
             <a-tabs tabPosition="top" defaultActiveKey="Handler" >
               <a-tab-pane tab="Handler" key="Handler">
-                <pre >{{JSON.stringify(detailInfo.handler, null,1)}}</pre>
+                <codemirror :options="cmOptions"
+                  :value="JSON.stringify(detailInfo.handler,null,2)"
+                  @ready="onCmReady"
+                />
               </a-tab-pane>
               <a-tab-pane tab="Modules" key="Modules">
-                <pre>{{JSON.stringify(detailInfo.modules, null,1)}}</pre>
+                <codemirror :options="cmOptions"
+                  :value="JSON.stringify(detailInfo.modules,null,2)"
+                  @ready="onCmReady"
+                />
               </a-tab-pane>
               <a-tab-pane tab="Components" key="Components">
-                <pre>{{JSON.stringify(detailInfo.components, null,1)}}</pre>
+                <codemirror :options="cmOptions"
+                  :value="JSON.stringify(detailInfo.components,null,2)"
+                  @ready="onCmReady"
+                />
               </a-tab-pane>
               <a-tab-pane tab="Settings" key="Settings">
-                <pre>{{JSON.stringify(detailInfo.settings, null,1)}}</pre>
+                <codemirror :options="cmOptions"
+                  :value="JSON.stringify(detailInfo.settings,null,2)"
+                  @ready="onCmReady"
+                />
               </a-tab-pane>
               <a-tab-pane tab="Proxy" key="Proxy">
-                <pre>{{JSON.stringify(detailInfo.proxy, null,1)}}</pre>
+                <codemirror :options="cmOptions"
+                  :value="JSON.stringify(detailInfo.proxy,null,2)"
+                  @ready="onCmReady"
+                />
               </a-tab-pane>
             </a-tabs>
           </a-tab-pane>
-          <a-tab-pane v-if="serInfo.frontend" tab="Connections" key="connect" forceRender>
-            <pre>{{JSON.stringify(loginInfo, null,1)}}</pre>
+          <a-tab-pane v-if="serInfo.frontend" tab="Connections" key="connect">
+            <codemirror :options="cmOptions"
+                :value="JSON.stringify(loginInfo, null,1)"
+                @ready="onCmReady"
+            />
           </a-tab-pane>
-          <a-tab-pane tab="Script" key="script">Content of Tab Pane 3</a-tab-pane>
+          <a-tab-pane tab="Script" key="script">
+            <codemirror :options="cmScriptOptions"
+                v-model="scriptContext"
+                @ready="onCmReady"
+            />
+          </a-tab-pane>
+          <a-tab-pane tab="Monitor Log" key="MonitorLog">
+            <a-button type="primary">获取日志</a-button>
+            <codemirror :options="cmOptions"
+                :value="monitorLog"
+                @ready="onCmReady"
+            />
+          </a-tab-pane>
         </a-tabs>
 
       </a-col>
@@ -64,14 +101,92 @@
 <script>
 
 import { axios } from '@/utils/request';
+import { codemirror } from 'vue-codemirror';
+import 'codemirror/lib/codemirror.css';
+import 'codemirror/mode/javascript/javascript.js';
+import 'codemirror/addon/edit/matchbrackets.js';
+import 'codemirror/addon/comment/comment.js';
+import 'codemirror/addon/dialog/dialog.js';
+import 'codemirror/addon/dialog/dialog.css';
+import 'codemirror/addon/search/search.js';
+import 'codemirror/addon/search/searchcursor.js';
+// import 'codemirror/addon/display/fullscreen.css';
+// import 'codemirror/addon/display/fullscreen.js';
+
+// import 'codemirror/keymap/vim.js';
+
+import 'codemirror/theme/mbo.css';
+
+import 'codemirror/addon/fold/foldgutter.css';
+import 'codemirror/addon/edit/matchtags';
+import 'codemirror/addon/fold/foldcode';
+import 'codemirror/addon/fold/foldgutter';
+import 'codemirror/addon/fold/brace-fold';
+
 export default {
   name: 'ServerInfo',
   components: {
+    codemirror
   },
   data () {
     return {
       serverId: '',
-      loginInfo: {}
+      loginInfo: {},
+      monitorLog: '',
+      scriptContext: 'var cpus = os.cpus();\nresult = util.inspect(cpus,true,null);',
+      cmOptions: {
+        // codemirror options
+        tabSize: 2,
+        styleActiveLine: true,
+        styleSelectedText: true,
+        height: 600,
+        mode: 'application/json',
+        theme: 'mbo',
+        lineNumbers: true,
+        lineWrapping: true,
+        line: true,
+        // keyMap: 'vim',
+        readOnly: true,
+        matchBrackets: true,
+        showCursorWhenSelecting: true,
+        extraKeys: {
+          // 'F11': function (cm) {
+          //   cm.setOption('fullScreen', !cm.getOption('fullScreen'));
+          // },
+          // 'Esc': function (cm) {
+          //   if (cm.getOption('fullScreen')) cm.setOption('fullScreen', false);
+          // }
+        },
+        foldGutter: true,
+        gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
+        // more codemirror options, 更多 codemirror 的高级配置...
+      },
+      cmScriptOptions: {
+        // codemirror options
+        tabSize: 2,
+        styleActiveLine: true,
+        styleSelectedText: true,
+        height: 600,
+        mode: 'text/javascript',
+        theme: 'mbo',
+        lineNumbers: true,
+        lineWrapping: true,
+        line: true,
+        // keyMap: 'vim',
+        matchBrackets: true,
+        showCursorWhenSelecting: true,
+        extraKeys: {
+          // 'F11': function (cm) {
+          //   cm.setOption('fullScreen', !cm.getOption('fullScreen'));
+          // },
+          // 'Esc': function (cm) {
+          //   if (cm.getOption('fullScreen')) cm.setOption('fullScreen', false);
+          // }
+        },
+        foldGutter: true,
+        gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
+        // more codemirror options, 更多 codemirror 的高级配置...
+      }
     };
   },
   computed: {
@@ -91,6 +206,7 @@ export default {
       await this.getDetailInfo();
       await this.getLoginInfo();
     })();
+    console.log(this.serInfo);
   },
   methods: {
     async getLoginInfo () {
@@ -124,6 +240,9 @@ export default {
     async startServer () {
       let ret = await this.$store.dispatch('StartServer', this.serInfo);
       this.axiosMsg(ret);
+    },
+    onCmReady (cm) {
+      cm.setSize('auto', '500px');
     }
   }
 };
@@ -174,7 +293,8 @@ table {
 }
 
 .colVal{
-  margin: 5px;
+  margin: 0px;
   text-align: left;
+  padding-top: 8px;
 }
 </style>

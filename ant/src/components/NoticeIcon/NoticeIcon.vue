@@ -89,13 +89,22 @@ export default {
           }
         } break;
       case 'monitorLog':
-        this.sendCmd(command, (msg) => {
-          let lines = msg.split('\n');
-          for (let it of lines) {
-            let de = it.split(' ');
-            de[0] = de[0].substring(1, 20);
-            let color = this.getColor(de[1]);
-            this.terminal.$emit('write', color + de[0] + ' ' + de.slice(2).join(' '));
+        this.sendCmd(command, (msg, status) => {
+          if (status === 'error') {
+            let msgErr = '\\color:#FF8033; ' + msg;
+            this.terminal.$emit('write', msgErr);
+          } else {
+            if (msg === 'success') {
+              this.terminal.$emit('write', 'no data');
+            } else {
+              let lines = msg.split('\n');
+              for (let it of lines) {
+                let de = it.split(' ');
+                de[0] = de[0].substring(1, 20);
+                let color = this.getColor(de[1]);
+                this.terminal.$emit('write', color + de[0] + ' ' + de.slice(2).join(' '));
+              }
+            }
           }
         });
         break;
@@ -155,7 +164,7 @@ export default {
         msg = msg.replace(/<p>/g, '');
         msg = msg.replace(/<\/p>/g, '\n');
         if (typeof (cb) === 'function') {
-          cb(msg);
+          cb(msg, res.status);
         } else {
           this.terminal.$emit('write', msg);
         }

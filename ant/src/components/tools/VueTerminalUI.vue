@@ -450,6 +450,8 @@ a {
   font-family: monospace;
   padding: 0;
   margin: 0;
+  padding-left: 6px;
+  padding-bottom: 16px;
 }
 
 .prefix {
