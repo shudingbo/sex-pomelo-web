@@ -25,6 +25,7 @@ router.beforeEach((to, from, next) => {
       if (store.getters.roles.length === 0) {
         (async () => {
           try {
+            await store.dispatch('GetMasters');
             // Get PomeloInfo
             await store.dispatch('GetSystemInfo');
             await store.dispatch('GetNodeInfo');

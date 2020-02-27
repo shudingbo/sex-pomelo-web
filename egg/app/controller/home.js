@@ -16,10 +16,40 @@ class HomeController extends Controller {
     ctx.success = { message: '404' };
   }
 
+  checkMasterName(data) {
+    const { ctx } = this;
+    const masterName = data.masterName;
+    if (typeof (masterName) !== 'string') {
+      ctx.error = { message: 'masterName required!' };
+      return false;
+    }
+
+    return masterName;
+  }
+
+  async getMasters() {
+    const { ctx } = this;
+    const ret = await this.app.pomelo.runMgrCmd('getMasters');
+
+    if (ret.status === false) {
+      ctx.error = { message: ret.message };
+    } else {
+      ctx.success = { data: ret };
+    }
+  }
+
   async pomelo() {
     const { ctx } = this;
     const cmd = ctx.query.cmd;
     let context = ctx.query.context;
+
+    const masterName = this.checkMasterName(ctx.query);
+    if (masterName === false) { return; }
+
+    if (typeof (masterName) !== 'string') {
+      ctx.error = { message: 'masterName required!' };
+      return;
+    }
 
     if (typeof (context) !== 'string') {
       context = 'all';
@@ -30,7 +60,7 @@ class HomeController extends Controller {
       return;
     }
 
-    const ret = await this.app.pomelo.runAction(cmd, context);
+    const ret = await this.app.pomelo.runAction(cmd, context, masterName);
     if (ret.status === true) {
       if (cmd.indexOf('monitorLog') === -1) {
         ctx.success = ret.data;
@@ -45,14 +75,17 @@ class HomeController extends Controller {
 
   async getAllServers() {
     const { ctx } = this;
-    const ret = await this.app.pomelo.runAction('show servers', 'all');
+    const masterName = this.checkMasterName(ctx.query);
+    if (masterName === false) { return; }
+
+    const ret = await this.app.pomelo.runAction('show servers', 'all', masterName);
 
     let runServers = {};
     if (ret.status === true) {
       runServers = ret.data;
     }
 
-    const regServers = await this.service.pomelo.pomelo.GetRegServers();
+    const regServers = await this.service.pomelo.pomelo.GetRegServers(masterName);
 
     // 检测未注册的
     const modifyServer = {};
@@ -71,7 +104,7 @@ class HomeController extends Controller {
     }
 
     // 注册有变化的服务器
-    await this.service.pomelo.pomelo.regServers(modifyServer);
+    await this.service.pomelo.pomelo.regServers(masterName, modifyServer);
 
     // 把 已经注册的未运行的添加进去
     for (const id in regServers) {
@@ -89,8 +122,10 @@ class HomeController extends Controller {
   async regServer() {
     const { ctx } = this;
     const body = ctx.request.body;
+    const masterName = this.checkMasterName(body);
+    if (masterName === false) { return; }
 
-    const ret = await this.service.pomelo.pomelo.getRegServer(body.serverId);
+    const ret = await this.service.pomelo.pomelo.getRegServer(masterName, body.serverId);
     if (ret !== null) {
       ctx.error = { message: 'ServerId has exist!' };
       return;
@@ -105,16 +140,18 @@ class HomeController extends Controller {
 
     const data = {};
     data[body.serverId] = JSON.stringify(body);
-    await this.service.pomelo.pomelo.regServers(data);
+    await this.service.pomelo.pomelo.regServers(masterName, data);
 
     ctx.success = { message: `${body.serverId} Add Success!` };
   }
 
   async regServerBatch() {
     const { ctx } = this;
-    const servers = ctx.request.body;
+    const { servers } = ctx.request.body;
+    const masterName = this.checkMasterName(ctx.request.body);
+    if (masterName === false) { return; }
 
-    const regServers = await this.service.pomelo.pomelo.GetRegServersName();
+    const regServers = await this.service.pomelo.pomelo.GetRegServersName(masterName);
 
     const data = {};
     for (const serId in servers) {
@@ -142,16 +179,19 @@ class HomeController extends Controller {
       }
     }
 
-    await this.service.pomelo.pomelo.regServers(data);
+    await this.service.pomelo.pomelo.regServers(masterName, data);
     ctx.success = { message: 'Add Success!', data };
   }
 
   async unregServer() {
     const { ctx } = this;
     const body = ctx.request.body;
-    const ret = await this.service.pomelo.pomelo.getRegServer(body.serverId);
+    const masterName = this.checkMasterName(body);
+    if (masterName === false) { return; }
+
+    const ret = await this.service.pomelo.pomelo.getRegServer(masterName, body.serverId);
     if (ret !== null) {
-      await this.service.pomelo.pomelo.unregServers(body.serverId);
+      await this.service.pomelo.pomelo.unregServers(masterName, body.serverId);
     }
 
     ctx.success = { message: `${body.serverId} Unreg Success!` };
@@ -160,7 +200,11 @@ class HomeController extends Controller {
   async upServerInfo() {
     const { ctx } = this;
     const body = ctx.request.body;
-    const ret = await this.service.pomelo.pomelo.getRegServer(body.serverId);
+
+    const masterName = this.checkMasterName(body);
+    if (masterName === false) { return; }
+
+    const ret = await this.service.pomelo.pomelo.getRegServer(masterName, body.serverId);
     if (ret === null) {
       ctx.error = { message: `Can't find Server ${body.serverId}` };
       return;
@@ -173,7 +217,7 @@ class HomeController extends Controller {
     const data = {};
     data[ body.serverId ] = JSON.stringify(ret);
 
-    await this.service.pomelo.pomelo.regServers(data);
+    await this.service.pomelo.pomelo.regServers(masterName, data);
     ctx.success = { message: `${body.serverId} Update Success!` };
 
   }
@@ -210,8 +254,11 @@ class HomeController extends Controller {
       return;
     }
 
+    const masterName = this.checkMasterName(ctx.query);
+    if (masterName === false) { return; }
+
     const ret = {};
-    const rHandler = await this.app.pomelo.runAction('show handler', serverId);
+    const rHandler = await this.app.pomelo.runAction('show handler', serverId, masterName);
     if (rHandler.status === false) {
       ctx.error = { message: rHandler.message };
       return;
@@ -220,16 +267,16 @@ class HomeController extends Controller {
     const serverType = this.service.pomelo.pomelo.getServerType(serverId);
     ret.handler = rHandler.data[serverType];
 
-    const rModules = await this.app.pomelo.runAction('show modules', serverId);
+    const rModules = await this.app.pomelo.runAction('show modules', serverId, masterName);
     ret.modules = rModules.data;
 
-    const rComponents = await this.app.pomelo.runAction('show components', serverId);
+    const rComponents = await this.app.pomelo.runAction('show components', serverId, masterName);
     ret.components = rComponents.data;
 
-    const rProxy = await this.app.pomelo.runAction('show proxy', serverId);
+    const rProxy = await this.app.pomelo.runAction('show proxy', serverId, masterName);
     ret.proxy = rProxy.data[serverType];
 
-    const rSetting = await this.service.pomelo.pomelo.getServerSetting(serverId);
+    const rSetting = await this.service.pomelo.pomelo.getServerSetting(masterName, serverId);
     ret.settings = rSetting;
 
     ctx.success = ret;
@@ -242,6 +289,11 @@ class HomeController extends Controller {
       ctx.error = { message: `serverId: [${serverId}] Error.` };
       return;
     }
+
+    const masterName = this.checkMasterName(ctx.query);
+    if (masterName === false) { return; }
+
+    ctx.success = { message: 'Not implement! TODO' };
   }
 
 
@@ -252,6 +304,10 @@ class HomeController extends Controller {
       ctx.error = { message: `serverId: [${serverId}] Error.` };
       return;
     }
+    const masterName = this.checkMasterName(ctx.query);
+    if (masterName === false) { return; }
+
+    ctx.success = { message: 'Not implement! TODO' };
   }
 
 }

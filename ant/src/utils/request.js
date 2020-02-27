@@ -51,6 +51,13 @@ service.interceptors.request.use(config => {
   if (token) {
     config.headers['Access-Token'] = token; // 让每个请求携带自定义 token 请根据实际情况自行修改
   }
+  if (typeof (config.params) === 'object') {
+    config.params.masterName = store.getters.sexpCurMaster;
+  }
+
+  if (typeof (config.data) === 'object') {
+    config.data.masterName = store.getters.sexpCurMaster;
+  }
 
   return config;
 }, err);

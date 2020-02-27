@@ -4,6 +4,7 @@ import Vue from 'vue';
 import { axios } from '@/utils/request';
 import { globalCfg } from '@/config/globalCfg';
 import notification from 'ant-design-vue/es/notification';
+import { setStore, getStore } from '@/utils/storage';
 
 notification.config({ placement: 'bottomRight', duration: 2 });
 
@@ -162,9 +163,41 @@ const sexp = {
     },
     serverDetailInfo: {
 
-    }
+    },
+    pomeloMasters: [],
+    curMaster: ''
+
   },
   mutations: {
+    SET_MASTERS: (state, masters) => {
+      let curMaster = getStore('sexp-cli:curMaster');
+      let hasCurMaster = (typeof (curMaster) === 'string');
+
+      let bFind = false;
+      for (let it of masters) {
+        let name = `${it.host}-${it.port}`;
+        if (typeof (it.alias) === 'string') {
+          name = it.alias;
+        }
+        it.masterName = name;
+        if (hasCurMaster === true && curMaster === name) {
+          bFind = true;
+        }
+      }
+
+      if (bFind === false) {
+        curMaster = (typeof (masters[0].alias) === 'string') ? masters[0].alias : `${masters[0].host}-${masters[0].port}`;
+      }
+
+      state.curMaster = curMaster;
+      state.pomeloMasters = masters;
+      setStore('sexp-cli:curMaster', curMaster);
+    },
+    CHANGE_MASTER: (state, masterName) => {
+      state.curMaster = masterName;
+      state.systemInfoMap = {};
+      setStore('sexp-cli:curMaster', masterName);
+    },
     SET_SYSTEMINFO: (state, systemInfo) => {
       state.systemInfo = systemInfo;
       let system = state.systemInfoMap;
@@ -250,6 +283,12 @@ const sexp = {
         } else {
           let newNode = makeNode(sInfo);
           state.nodeInfo[sInfo.serverId] = newNode;
+
+          if (sysIt === undefined) {
+            let ob = makeSys(sInfo.host);
+            system[ob.host] = ob;
+          }
+
           state.systemInfoMap[sysName].nodes[sInfo.serverId] = newNode;
         }
       }
@@ -632,6 +671,25 @@ const sexp = {
         commit('SET_SERVER_DETAL', resp.data);
       }
       return resp;
+    },
+    async GetMasters ({ commit }) {
+      const resp = await axios({
+        url: '/getMasters',
+        method: 'get',
+        params: { }
+      });
+      if (resp.status === 'success') {
+        commit('SET_MASTERS', resp.data.data);
+      } else {
+        throw resp.message;
+      }
+    },
+    async ChangeMaster ({ dispatch, commit, state }, masterName) {
+      commit('CHANGE_MASTER', masterName);
+      await dispatch('GetSystemInfo');
+      await dispatch('GetNodeInfo');
+      await dispatch('GetServers');
+      commit('UPDATE_SERVERS');
     }
   },
   getters: {
@@ -657,7 +715,9 @@ const sexp = {
       } else {
         return ret;
       }
-    }
+    },
+    sexpCurMaster: state => state.curMaster,
+    sexpMasters: state => state.pomeloMasters
   }
 };
 

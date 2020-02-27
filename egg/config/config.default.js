@@ -36,12 +36,21 @@ module.exports = appInfo => {
 
   config.pomelo = {
     client: {
-      master: {
+      master: [{
         host: '192.168.2.13',
         port: 3005,
         username: 'admin',
         password: 'admin',
       },
+      {
+        alias: 'sdb-test32',
+        host: '192.168.2.32',
+        port: 3005,
+        username: 'admin',
+        password: 'admin',
+      },
+
+      ],
     },
   };
 

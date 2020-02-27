@@ -293,7 +293,7 @@ export default {
       const resp = await axios({
         url: '/regServerBatch',
         method: 'post',
-        data: addServers
+        data: { servers: addServers }
       });
 
       if (resp.status === 'success') {

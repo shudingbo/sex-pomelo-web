@@ -14,8 +14,19 @@
         :initMessage="ASCII_LOGO"
         @triggerCommand="execute" />
     </a-drawer>
-    <span @click="showTerminal" class="header-notice" style="padding: 0 0px">
-      <a-icon style="font-size: 16px; padding: 4px" type="code" />
+    <span class="header-notice" style="padding: 0 0px">
+
+      <a-dropdown-button @click="showTerminal">
+        <a-icon type="code" />
+        {{curMaster}}
+        <a-menu slot="overlay" @click="handleChangeMaster">
+          <a-menu-item v-for="v in masters"
+            :key="`${v.masterName}`"
+          >
+          {{v.masterName}}
+          </a-menu-item>
+        </a-menu>
+      </a-dropdown-button>
     </span>
   </div>
 </template>
@@ -48,7 +59,14 @@ export default {
   computed: {
     terminal () {
       return this.$refs['terminal-ui'];
+    },
+    curMaster () {
+      return this.$store.getters.sexpCurMaster;
+    },
+    masters () {
+      return this.$store.getters.sexpMasters;
     }
+
   },
   methods: {
     showTerminal () {
@@ -61,6 +79,11 @@ export default {
 
       let commandArgs = command.trim().split(/(?<!\\) /g);
       switch (commandArgs[0]) {
+      case 'master':
+        {
+          let msg = '\\color:#8080FF; Current Master is: ' + this.curMaster;
+          this.terminal.$emit('write', msg);
+        } break;
       case 'use':
         {
           let len = commandArgs.length;
@@ -172,6 +195,12 @@ export default {
         let msg = '\\color:#FF8033; ' + err.toString();
         this.terminal.$emit('write', msg);
       });
+    },
+    handleChangeMaster (e) {
+      let selMasterName = e.key;
+      if (selMasterName !== this.curMaster) {
+        this.$store.dispatch('ChangeMaster', selMasterName);
+      }
     }
   }
 };

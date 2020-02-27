@@ -206,7 +206,6 @@ export default {
       await this.getDetailInfo();
       await this.getLoginInfo();
     })();
-    console.log(this.serInfo);
   },
   methods: {
     async getLoginInfo () {

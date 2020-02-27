@@ -8,28 +8,32 @@ const key_StartGroup = 'sexp:sgroup';
 
 class PomeloService extends Service {
 
-  /** 从redis获取服务器列表 */
-  async GetRegServers() {
-    const ret = await this.app.redis.hgetall(key_ServerList);
+  /** 从redis获取服务器列表
+   * @param {string} masterName which master
+  */
+  async GetRegServers(masterName) {
+    const ret = await this.app.redis.hgetall(`${key_ServerList}:${masterName}`);
     for (const id in ret) {
       ret[id] = JSON.parse(ret[id]);
     }
     return ret;
   }
-  async GetRegServersName() {
-    const ret = await this.app.redis.hkeys(key_ServerList);
+
+  async GetRegServersName(masterName) {
+    const ret = await this.app.redis.hkeys(`${key_ServerList}:${masterName}`);
     return ret;
   }
 
 
   /** 获取指定 serverId的注册配置
    *
+   * @param {string} masterName which master
    * @param {string} serverId serverID
    *
    * @return {object|null} null,表示不存在
    */
-  async getRegServer(serverId) {
-    const ret = await this.app.redis.hget(key_ServerList, serverId);
+  async getRegServer(masterName, serverId) {
+    const ret = await this.app.redis.hget(`${key_ServerList}:${masterName}`, serverId);
     if (ret !== null) {
       return JSON.parse(ret);
     }
@@ -38,24 +42,25 @@ class PomeloService extends Service {
   }
 
   /** 添加服务器到redis
-   *
+   * @param {string} masterName which master
    * @param {object} servers regServers
    */
-  async regServers(servers) {
+  async regServers(masterName, servers) {
     if (Object.keys(servers).length === 0) {
       return true;
     }
 
-    const ret = await this.app.redis.hmset(key_ServerList, servers);
+    const ret = await this.app.redis.hmset(`${key_ServerList}:${masterName}`, servers);
     return ret;
   }
 
   /** 从redis删除服务器
    *
+   * @param {string} masterName which master
    * @param {string} serverId 服务器ID
    */
-  async unregServers(serverId) {
-    const ret = await this.app.redis.hdel(key_ServerList, serverId);
+  async unregServers(masterName, serverId) {
+    const ret = await this.app.redis.hdel(`${key_ServerList}:${masterName}`, serverId);
     return ret;
   }
 
@@ -119,8 +124,13 @@ class PomeloService extends Service {
     return serverType;
   }
 
-  async getServerSetting(serverId) {
-    const rSetting = await this.app.pomelo.runAction('show settings', serverId);
+  /** get Server‘s setting
+   *
+   * @param {string} masterName master Name
+   * @param {string} serverId serverId
+   */
+  async getServerSetting(masterName, serverId) {
+    const rSetting = await this.app.pomelo.runAction('show settings', serverId, masterName);
     if (rSetting.status === true) {
       delete rSetting.data.servers;
       return rSetting.data;
@@ -129,8 +139,13 @@ class PomeloService extends Service {
     return {};
   }
 
-  async getServerConnections(serverId) {
-    const ret = await this.app.pomelo.runAction('show connections', serverId);
+  /** get Server‘s connection info
+   *
+   * @param {string} serverId serverId
+   * @param {string} masterName master Name
+   */
+  async getServerConnections(serverId, masterName) {
+    const ret = await this.app.pomelo.runAction('show connections', serverId, masterName);
     if (ret.status === true) {
       return ret.data;
     }
@@ -138,8 +153,13 @@ class PomeloService extends Service {
     return {};
   }
 
-  async getServerConnectionInfo(serverId) {
-    const ret = await this.app.pomelo.runAction('show connectionInfo', serverId);
+  /** get Server‘s connection simple info
+   *
+   * @param {string} serverId serverId
+   * @param {string} masterName master Name
+   */
+  async getServerConnectionInfo(serverId, masterName) {
+    const ret = await this.app.pomelo.runAction('show connectionInfo', serverId, masterName);
     if (ret.status === true) {
       return ret.data;
     }
