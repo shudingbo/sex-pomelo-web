@@ -64,8 +64,12 @@ class PomeloService extends Service {
     return ret;
   }
 
-  async getAllGroup() {
-    const ret = await this.app.redis.hgetall(key_StartGroup);
+  /** 获取指定的master的所有启动分组
+   *
+   * @param {string} masterName which master
+   */
+  async getAllGroup(masterName) {
+    const ret = await this.app.redis.hgetall(`${key_StartGroup}:${masterName}`);
     for (const id in ret) {
       ret[id] = JSON.parse(ret[id]);
     }
@@ -74,11 +78,12 @@ class PomeloService extends Service {
 
   /** 获取指定名称的启动分组
    *
+   * @param {string} masterName which master
    * @param {string} groupName 启动组名称
    * @return {array|null} null 表示没有
    */
-  async getGroupByName(groupName) {
-    const ret = await this.app.redis.hget(key_StartGroup, groupName);
+  async getGroupByName(masterName, groupName) {
+    const ret = await this.app.redis.hget(`${key_StartGroup}:${masterName}`, groupName);
     if (ret !== null) {
       return JSON.parse(ret);
     }
@@ -88,19 +93,21 @@ class PomeloService extends Service {
 
   /** 保存分组
    *
+   * @param {string} masterName which master
    * @param {string} groupName 分组名称
    * @param {array} data 数据
    */
-  async saveGroup(groupName, data) {
-    return await this.app.redis.hset(key_StartGroup, groupName, JSON.stringify(data));
+  async saveGroup(masterName, groupName, data) {
+    return await this.app.redis.hset(`${key_StartGroup}:${masterName}`, groupName, JSON.stringify(data));
   }
 
   /** 删除指定名称分组
    *
+   * @param {string} masterName which master
    * @param {string} groupName 分组名称
    */
-  async deleteGroup(groupName) {
-    const ret = await this.app.redis.hdel(key_StartGroup, groupName);
+  async deleteGroup(masterName, groupName) {
+    const ret = await this.app.redis.hdel(`${key_StartGroup}:${masterName}`, groupName);
     return ret;
   }
 
@@ -139,12 +146,12 @@ class PomeloService extends Service {
     return {};
   }
 
-  /** get Server‘s connection info
+  /** get Server‘s connection info\
    *
-   * @param {string} serverId serverId
    * @param {string} masterName master Name
+   * @param {string} serverId serverId
    */
-  async getServerConnections(serverId, masterName) {
+  async getServerConnections(masterName, serverId) {
     const ret = await this.app.pomelo.runAction('show connections', serverId, masterName);
     if (ret.status === true) {
       return ret.data;
@@ -155,10 +162,10 @@ class PomeloService extends Service {
 
   /** get Server‘s connection simple info
    *
-   * @param {string} serverId serverId
    * @param {string} masterName master Name
+   * @param {string} serverId serverId
    */
-  async getServerConnectionInfo(serverId, masterName) {
+  async getServerConnectionInfo(masterName, serverId) {
     const ret = await this.app.pomelo.runAction('show connectionInfo', serverId, masterName);
     if (ret.status === true) {
       return ret.data;

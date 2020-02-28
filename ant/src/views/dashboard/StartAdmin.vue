@@ -232,6 +232,7 @@ export default {
         this.curSelGroup = this.newGroupName;
         this.setStore('sexp-cli:defaultGroup', this.newGroupName);
         this.dlgNewGroupVisable = false;
+        this.hasChange = false;
       }
     },
     showSaveAsDlg () {

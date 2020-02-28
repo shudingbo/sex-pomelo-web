@@ -204,7 +204,7 @@ class HomeController extends Controller {
 
   async getAllStartGroup() {
     const { ctx } = this;
-    const g = await this.service.pomelo.pomelo.getAllGroup();
+    const g = await this.service.pomelo.pomelo.getAllGroup(ctx.locals.pomelo.masterName);
     ctx.success = { group: g };
 
   }
@@ -215,14 +215,14 @@ class HomeController extends Controller {
     const gName = body.name;
     const gData = body.data;
 
-    await this.service.pomelo.pomelo.saveGroup(gName, gData);
+    await this.service.pomelo.pomelo.saveGroup(ctx.locals.pomelo.masterName, gName, gData);
     ctx.success = { message: `Start Group [ ${gName} ] Save OK.` };
   }
 
   async deleteStartGroup() {
     const { ctx } = this;
     const body = ctx.request.body;
-    await this.service.pomelo.pomelo.deleteGroup(body.name);
+    await this.service.pomelo.pomelo.deleteGroup(ctx.locals.pomelo.masterName, body.name);
     ctx.success = { message: `${body.name} delete Success!` };
   }
 

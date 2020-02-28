@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="height:100%">
     <a-row>
       <a-col :span="20">
         <div>
@@ -27,7 +27,7 @@
               <a-select-option v-for="i in serverTypes" :key="i" :value="i">{{i}}</a-select-option>
             </a-select>
           </div>
-          <div id="pomeloSystemGraph" />
+          <div style="height:100%;border:2px solid #e8e8e8; " id="pomeloSystemGraph" />
         </div>
       </a-col>
       <a-col :span="4">
@@ -67,6 +67,9 @@
               </span>
             </li>
           </ul>
+        </div>
+        <div v-else>
+          <h4 style="textAlign:center">选择节点显示详细信息</h4>
         </div>
       </a-col>
     </a-row>
@@ -697,7 +700,8 @@ export default {
           getHGap: () => 50,
           radial: false
         }
-      }
+      },
+      graphSize: { width: 1000, height: 600 }
     };
   },
   computed: {
@@ -825,41 +829,30 @@ export default {
   mounted () {
     this.createGraphics();
 
-    // if (window.ResizeObserver) {
-    //   const viewElem = document.querySelector('#pomeloSystemGraph');
-    //   const resizeObserver = new ResizeObserver((entries) => {
-    //     for (const entry of entries) {
-    //       if (!this.initialHeight) {
-    //         this.initialHeight = entry.contentRect.height;
-    //       }
-    //       if (this.initialHeight) {
-    //         const deltaHeight = this.initialHeight - entry.contentRect.height;
-    //         // this.$bus.$emit('rerenderViewAndEditor', deltaHeight);
-    //         console.log(this.initialHeight, entry.contentRect.height);
-    //         console.log(this.initialWidth, entry.contentRect.width);
-    //         // gGraph.get('canvas').changeSize(entry.contentRect.width, entry.contentRect.height);
-    //         // const canvas = gGraph.get('canvas');
-    //         gGraph.fitView();
-    //       }
-    //     }
-    //   });
-    //   resizeObserver.observe(viewElem);
-    // } else {
-    //   console.warn('Not support ResizeObserver');
-    // }
+    const that = this;
+    window.onresize = () => {
+      return (() => {
+        that.graphSize = that.calcGraphSize();
+      })();
+    };
   },
   methods: {
     saveGraphCfg () {
       this.setStore('sexp-cli:graph', this.show);
     },
+    calcGraphSize () {
+      const viewElem = document.getElementById('pomeloSystemGraph');
+      let width = parseInt(viewElem.clientWidth);
+      let height = document.body.clientHeight - 180;
+      return { width, height };
+    },
     createGraphics () {
-      const width = document.getElementById('pomeloSystemGraph').scrollWidth;
-      const height = document.getElementById('pomeloSystemGraph').scrollHeight || 560;
+      this.graphSize = this.calcGraphSize();
       let self = this;
       const graph = new G6.TreeGraph({
         container: 'pomeloSystemGraph',
-        width,
-        height,
+        width: this.graphSize.width,
+        height: this.graphSize.height,
         zoom: 1,
         fitView: true,
         modes: {
@@ -905,10 +898,10 @@ export default {
 
       graph.on('beforepaint', () => {
         const topLeft = graph.getPointByCanvas(0, 0);
-        const bottomRight = graph.getPointByCanvas(1000, 600);
+        const bottomRight = graph.getPointByCanvas(this.graphSize.width, this.graphSize.height);
         graph.getNodes().forEach(node => {
           const model = node.getModel();
-          if (model.x < topLeft.x - 200 || model.x > bottomRight.x || model.y < topLeft.y || model.y > bottomRight.y) {
+          if (model.x < topLeft.x - 200 || model.x > bottomRight.x + 100 || model.y < topLeft.y || model.y > bottomRight.y) {
             node.getContainer().hide();
           } else {
             node.getContainer().show();
@@ -1174,6 +1167,16 @@ export default {
   watch: {
     gData (val) {
       this.graph.changeData(val);
+    },
+    graphSize (val) {
+      if (!this.timer) {
+        this.timer = true;
+        let that = this;
+        setTimeout(function () {
+          that.timer = false;
+          that.graph.changeSize(that.graphSize.width, that.graphSize.height);
+        }, 400);
+      }
     }
   }
 };

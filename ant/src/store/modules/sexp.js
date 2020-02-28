@@ -205,6 +205,9 @@ const sexp = {
     CHANGE_MASTER: (state, masterAlias) => {
       state.curMaster = state.pomeloMastersMap[masterAlias];
       state.curMasterAlias = masterAlias;
+      state.systemInfo = {};
+      state.nodeInfo = {};
+      state.nodeHostMap = {};
       state.systemInfoMap = {};
       setStore('sexp-cli:curMaster', state.curMaster);
     },
