@@ -16,15 +16,15 @@
     </a-drawer>
     <span class="header-notice" style="padding: 0 0px">
 
-      <a-dropdown-button @click="showTerminal">
-        <a-icon type="code" />
-        {{curMaster}}
+      <a-dropdown-button @click="showTerminal" size="small" type="dashed">
+        <a-icon type="code" />{{curMasterAlias}}
         <a-menu slot="overlay" @click="handleChangeMaster">
           <a-menu-item v-for="v in masters"
-            :key="`${v.masterName}`"
+            :key="`${v.alias}`"
           >
-          {{v.masterName}}
+          {{v.alias}}
           </a-menu-item>
+          <a-menu-divider />
         </a-menu>
       </a-dropdown-button>
     </span>
@@ -63,6 +63,9 @@ export default {
     curMaster () {
       return this.$store.getters.sexpCurMaster;
     },
+    curMasterAlias () {
+      return this.$store.getters.sexpCurMasterAlia;
+    },
     masters () {
       return this.$store.getters.sexpMasters;
     }
@@ -96,7 +99,7 @@ export default {
               }
             }
 
-            if (serIds.indexOf(commandArgs[1]) === -1) {
+            if (commandArgs[1] !== 'all' && serIds.indexOf(commandArgs[1]) === -1) {
               let msg = `\\color:#FF8033; server ${commandArgs[1]} not exists`;
               this.terminal.$emit('write', msg);
             } else {
@@ -197,9 +200,9 @@ export default {
       });
     },
     handleChangeMaster (e) {
-      let selMasterName = e.key;
-      if (selMasterName !== this.curMaster) {
-        this.$store.dispatch('ChangeMaster', selMasterName);
+      let selMasterAlias = e.key;
+      if (selMasterAlias !== this.curMasterAlias) {
+        this.$store.dispatch('ChangeMaster', selMasterAlias);
       }
     }
   }

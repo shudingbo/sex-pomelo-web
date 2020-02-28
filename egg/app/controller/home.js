@@ -16,17 +16,6 @@ class HomeController extends Controller {
     ctx.success = { message: '404' };
   }
 
-  checkMasterName(data) {
-    const { ctx } = this;
-    const masterName = data.masterName;
-    if (typeof (masterName) !== 'string') {
-      ctx.error = { message: 'masterName required!' };
-      return false;
-    }
-
-    return masterName;
-  }
-
   async getMasters() {
     const { ctx } = this;
     const ret = await this.app.pomelo.runMgrCmd('getMasters');
@@ -43,9 +32,7 @@ class HomeController extends Controller {
     const cmd = ctx.query.cmd;
     let context = ctx.query.context;
 
-    const masterName = this.checkMasterName(ctx.query);
-    if (masterName === false) { return; }
-
+    const masterName = ctx.locals.pomelo.masterName;
     if (typeof (masterName) !== 'string') {
       ctx.error = { message: 'masterName required!' };
       return;
@@ -75,9 +62,7 @@ class HomeController extends Controller {
 
   async getAllServers() {
     const { ctx } = this;
-    const masterName = this.checkMasterName(ctx.query);
-    if (masterName === false) { return; }
-
+    const masterName = ctx.locals.pomelo.masterName;
     const ret = await this.app.pomelo.runAction('show servers', 'all', masterName);
 
     let runServers = {};
@@ -122,8 +107,7 @@ class HomeController extends Controller {
   async regServer() {
     const { ctx } = this;
     const body = ctx.request.body;
-    const masterName = this.checkMasterName(body);
-    if (masterName === false) { return; }
+    const masterName = ctx.locals.pomelo.masterName;
 
     const ret = await this.service.pomelo.pomelo.getRegServer(masterName, body.serverId);
     if (ret !== null) {
@@ -148,8 +132,7 @@ class HomeController extends Controller {
   async regServerBatch() {
     const { ctx } = this;
     const { servers } = ctx.request.body;
-    const masterName = this.checkMasterName(ctx.request.body);
-    if (masterName === false) { return; }
+    const masterName = ctx.locals.pomelo.masterName;
 
     const regServers = await this.service.pomelo.pomelo.GetRegServersName(masterName);
 
@@ -186,8 +169,7 @@ class HomeController extends Controller {
   async unregServer() {
     const { ctx } = this;
     const body = ctx.request.body;
-    const masterName = this.checkMasterName(body);
-    if (masterName === false) { return; }
+    const masterName = ctx.locals.pomelo.masterName;
 
     const ret = await this.service.pomelo.pomelo.getRegServer(masterName, body.serverId);
     if (ret !== null) {
@@ -201,9 +183,7 @@ class HomeController extends Controller {
     const { ctx } = this;
     const body = ctx.request.body;
 
-    const masterName = this.checkMasterName(body);
-    if (masterName === false) { return; }
-
+    const masterName = ctx.locals.pomelo.masterName;
     const ret = await this.service.pomelo.pomelo.getRegServer(masterName, body.serverId);
     if (ret === null) {
       ctx.error = { message: `Can't find Server ${body.serverId}` };
@@ -254,9 +234,7 @@ class HomeController extends Controller {
       return;
     }
 
-    const masterName = this.checkMasterName(ctx.query);
-    if (masterName === false) { return; }
-
+    const masterName = ctx.locals.pomelo.masterName;
     const ret = {};
     const rHandler = await this.app.pomelo.runAction('show handler', serverId, masterName);
     if (rHandler.status === false) {
@@ -290,8 +268,7 @@ class HomeController extends Controller {
       return;
     }
 
-    const masterName = this.checkMasterName(ctx.query);
-    if (masterName === false) { return; }
+    const masterName = ctx.locals.pomelo.masterName;
 
     ctx.success = { message: 'Not implement! TODO' };
   }
@@ -304,8 +281,7 @@ class HomeController extends Controller {
       ctx.error = { message: `serverId: [${serverId}] Error.` };
       return;
     }
-    const masterName = this.checkMasterName(ctx.query);
-    if (masterName === false) { return; }
+    const masterName = ctx.locals.pomelo.masterName;
 
     ctx.success = { message: 'Not implement! TODO' };
   }

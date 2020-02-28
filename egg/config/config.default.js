@@ -25,6 +25,10 @@ module.exports = appInfo => {
     },
   };
 
+  // add your middleware config here
+  config.middleware = [ 'pomeloCheck' ];
+  config.pomeloCheck = {};
+
   config.redis = {
     client: {
       port: 6379,
@@ -37,14 +41,8 @@ module.exports = appInfo => {
   config.pomelo = {
     client: {
       master: [{
-        host: '192.168.2.13',
-        port: 3005,
-        username: 'admin',
-        password: 'admin',
-      },
-      {
-        alias: 'sdb-test32',
-        host: '192.168.2.32',
+        alias: 'test-13',
+        host: '192.168.2.33',
         port: 3005,
         username: 'admin',
         password: 'admin',
@@ -66,9 +64,6 @@ module.exports = appInfo => {
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
   };
 
-
-  // add your middleware config here
-  config.middleware = [];
 
   // add your user config here
   const userConfig = {

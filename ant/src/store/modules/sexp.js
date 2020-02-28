@@ -165,38 +165,48 @@ const sexp = {
 
     },
     pomeloMasters: [],
-    curMaster: ''
+    pomeloMastersMap: {},
+    curMaster: '',
+    curMasterAlias: ''
 
   },
   mutations: {
     SET_MASTERS: (state, masters) => {
       let curMaster = getStore('sexp-cli:curMaster');
       let hasCurMaster = (typeof (curMaster) === 'string');
-
+      let curAlias = '';
       let bFind = false;
       for (let it of masters) {
         let name = `${it.host}-${it.port}`;
+        let alias = name;
         if (typeof (it.alias) === 'string') {
-          name = it.alias;
+          alias = it.alias;
+        } else {
+          it.alias = name;
         }
+        state.pomeloMastersMap[alias] = name;
         it.masterName = name;
         if (hasCurMaster === true && curMaster === name) {
           bFind = true;
+          curAlias = it.alias;
         }
       }
 
       if (bFind === false) {
-        curMaster = (typeof (masters[0].alias) === 'string') ? masters[0].alias : `${masters[0].host}-${masters[0].port}`;
+        curMaster = masters[0].masterName;
+        curAlias = masters[0].alias;
       }
 
       state.curMaster = curMaster;
+      state.curMasterAlias = curAlias;
       state.pomeloMasters = masters;
       setStore('sexp-cli:curMaster', curMaster);
     },
-    CHANGE_MASTER: (state, masterName) => {
-      state.curMaster = masterName;
+    CHANGE_MASTER: (state, masterAlias) => {
+      state.curMaster = state.pomeloMastersMap[masterAlias];
+      state.curMasterAlias = masterAlias;
       state.systemInfoMap = {};
-      setStore('sexp-cli:curMaster', masterName);
+      setStore('sexp-cli:curMaster', state.curMaster);
     },
     SET_SYSTEMINFO: (state, systemInfo) => {
       state.systemInfo = systemInfo;
@@ -717,6 +727,7 @@ const sexp = {
       }
     },
     sexpCurMaster: state => state.curMaster,
+    sexpCurMasterAlia: state => state.curMasterAlias,
     sexpMasters: state => state.pomeloMasters
   }
 };
