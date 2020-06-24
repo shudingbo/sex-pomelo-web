@@ -27,7 +27,12 @@ module.exports = appInfo => {
 
   // add your middleware config here
   config.middleware = [ 'pomeloCheck' ];
-  config.pomeloCheck = {};
+  config.pomeloCheck = {
+    enable: true,
+    ignore: [
+      '/getScript',
+    ],
+  };
 
   config.redis = {
     client: {
@@ -41,8 +46,8 @@ module.exports = appInfo => {
   config.pomelo = {
     client: {
       master: [{
-        alias: 'test-13',
-        host: '192.168.2.33',
+        alias: 'test-pomelo',
+        host: '192.168.2.66',
         port: 3005,
         username: 'admin',
         password: 'admin',
