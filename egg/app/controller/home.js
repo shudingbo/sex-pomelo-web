@@ -286,6 +286,54 @@ class HomeController extends Controller {
     ctx.success = { message: 'Not implement! TODO' };
   }
 
+  async saveScript() {
+    const { ctx, app } = this;
+    const script = ctx.request.body;
+    await app.redis.hset(`pomeloScripts:${script.type}`, script.name, script.content);
+    ctx.success = {};
+  }
+
+  async getScript() {
+    const { ctx, app } = this;
+    const type = ctx.request.query.type;
+    const res = await app.redis.hgetall(`pomeloScripts:${type}`);
+    ctx.success = { data: res };
+  }
+
+  async execScript() {
+    const { ctx } = this;
+    const cmd = ctx.query.cmd;
+    let context = ctx.query.context;
+
+    const masterName = ctx.locals.pomelo.masterName;
+    if (typeof (masterName) !== 'string') {
+      ctx.error = {
+        message: 'masterName required!',
+      };
+      return;
+    }
+
+    if (typeof (context) !== 'string') {
+      context = 'all';
+    }
+
+    if (typeof (cmd) === 'string' && cmd.length <= 1) {
+      ctx.error = {
+        message: 'error cmd',
+      };
+      return;
+    }
+
+    const ret = await this.app.pomelo.execStr(cmd, context, masterName);
+    if (ret.status === true) {
+      ctx.success = ret.data.body.data;
+    } else {
+      ctx.error = {
+        message: ret.message,
+      };
+    }
+  }
+
 }
 
 module.exports = HomeController;

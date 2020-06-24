@@ -35,7 +35,7 @@
         </a-card>
       </a-col>
       <a-col :span="18">
-        <a-tabs defaultActiveKey="base" type="card" >
+        <a-tabs defaultActiveKey="connect" type="card" @change="tabChanged" >
           <a-tab-pane tab="Base Info" key="base">
             <a-tabs tabPosition="top" defaultActiveKey="Handler" >
               <a-tab-pane tab="Handler" key="Handler">
@@ -71,19 +71,59 @@
             </a-tabs>
           </a-tab-pane>
           <a-tab-pane v-if="serInfo.frontend" tab="Connections" key="connect">
-            <codemirror :options="cmOptions"
+            <a-card :bordered="false">
+              <a-table :dataSource="loginInfo.loginedList" :pagination="false" bordered >
+                <template slot="title">{{ loginInfo.serverId }} - <a-tag color="blue">{{ loginInfo.loginedCount }}</a-tag></template>
+                <a-table-column title="uid*room" dataIndex="uid" key="uid" />
+                <a-table-column title="loginTime" dataIndex="loginTime" key="loginTime">
+                  <template slot-scope="text"><span>{{ text| DateFormat('yyyy-MM-dd hh:mm:ss') }}</span></template>
+                </a-table-column>
+                <a-table-column title="address" dataIndex="address" key="address" />
+                <a-table-column title="操作"  key="action">
+                  <template slot-scope="text, record">
+                    <a-tag color="red" @click="kickUser(record)">踢出</a-tag>
+                  </template>
+                </a-table-column>
+              </a-table>
+            </a-card>
+            <!-- <codemirror :options="cmOptions"
                 :value="JSON.stringify(loginInfo, null,1)"
                 @ready="onCmReady"
-            />
+            /> -->
           </a-tab-pane>
           <a-tab-pane tab="Script" key="script">
-            <codemirror :options="cmScriptOptions"
-                v-model="scriptContext"
-                @ready="onCmReady"
-            />
+            <a-form :label-col="{ span: 2 }" :wrapper-col="{ span: 12 }">
+              <a-form-item label="适用范围">
+                <a-select v-model="scriptDetail.type" @change="getScript">
+                  <a-select-option value="all">所有</a-select-option>
+                  <a-select-option value="front">前端</a-select-option>
+                  <a-select-option value="backend">后端</a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="脚本名称">
+                <a-auto-complete
+                  :dataSource="typeKeys"
+                  @select="selectScript"
+                  @search="searchScript"
+                  @focus="typeKeys=[]"
+                  v-model="scriptDetail.name"
+                />
+                <a-input v-model="scriptDetail.name" placeholder="请输入脚本名称" hidden/>
+              </a-form-item>
+              <a-form-item label="脚本内容">
+                <codemirror :options="cmScriptOptions"
+                  v-model="scriptDetail.content"
+                  @ready="onCmReady" />
+              </a-form-item>
+              <a-form-item :wrapper-col="{ span: 12, offset: 2 }">
+                <a-button type="primary" v-if="scriptDetail.isSaved" @click="execScript">执行脚本</a-button>
+                <a-button type="primary" @click="saveScript" v-else>保存脚本</a-button>
+              </a-form-item>
+            </a-form>
+
           </a-tab-pane>
           <a-tab-pane tab="Monitor Log" key="MonitorLog">
-            <a-button type="primary">获取日志</a-button>
+            <a-button type="primary" @click="getLogs">获取日志</a-button>
             <codemirror :options="cmOptions"
                 :value="monitorLog"
                 @ready="onCmReady"
@@ -122,6 +162,7 @@ import 'codemirror/addon/edit/matchtags';
 import 'codemirror/addon/fold/foldcode';
 import 'codemirror/addon/fold/foldgutter';
 import 'codemirror/addon/fold/brace-fold';
+import { message } from 'ant-design-vue';
 
 export default {
   name: 'ServerInfo',
@@ -133,7 +174,19 @@ export default {
       serverId: '',
       loginInfo: {},
       monitorLog: '',
-      scriptContext: 'var cpus = os.cpus();\nresult = util.inspect(cpus,true,null);',
+      savedScripts: {},
+      scriptKeys: {},
+      typeKeys: [],
+      autoOpen: false,
+      scriptDetail: {
+        type: 'all',
+        name: '',
+        content: '',
+        isSaved: false
+      },
+      scriptType: [{ value: 'all', label: '所有' }, { value: 'frontend', label: '前端' }, { value: 'backend', label: '后端' }],
+      form: this.$form.createForm(this),
+      // scriptContext: 'var cpus = os.cpus();\nresult = util.inspect(cpus,true,null);',
       cmOptions: {
         // codemirror options
         tabSize: 2,
@@ -242,6 +295,78 @@ export default {
     },
     onCmReady (cm) {
       cm.setSize('auto', '500px');
+    },
+    async saveScript () {
+      console.log(this.scriptDetail);
+      const script = this.scriptDetail;
+      if (script.name === '' || script.content === '') {
+        message.error('请输入脚本内容');
+      } else {
+        const res = await axios({
+          url: '/saveScript',
+          method: 'post',
+          data: script
+        });
+        if (res.code === 0) {
+          message.success('添加成功');
+        }
+      }
+    },
+    searchScript (value) {
+      if (!value) return false;
+      const onlyKey = [];
+      for (const item of this.scriptKeys[this.scriptDetail.type]) {
+        if (item.includes(value)) onlyKey.push(item);
+      }
+      this.typeKeys = onlyKey;
+    },
+    selectScript (value) {
+      this.scriptDetail.content = this.savedScripts[this.scriptDetail.type][value];
+      this.scriptDetail.isSaved = true;
+    },
+    async getScript () {
+      const type = this.scriptDetail.type;
+      const res = await axios({
+        url: '/getScript',
+        method: 'get',
+        params: { type }
+      });
+      if (res.code !== 0) {
+        message.error('获取脚本失败');
+      } else {
+        const data = res.data;
+        this.savedScripts[type] = data;
+        const keys = [];
+        for (const key in data) {
+          keys.push(key);
+        }
+        this.scriptKeys[type] = keys;
+      }
+    },
+    async tabChanged (key) {
+      if (key === 'script') {
+        await this.getScript();
+      }
+    },
+    async execScript () {
+      const cmd = this.scriptDetail.content;
+      const ret = await axios({
+        url: '/execScript',
+        method: 'get',
+        params: { cmd, context: this.serInfo.serverId }
+      });
+      console.log(ret);
+    },
+    kickUser (record) {
+      console.log(record);
+    },
+    async getLogs () {
+      const res = await axios({
+        url: '/pomelo',
+        method: 'get',
+        params: { cmd: `monitorLog`, context: this.serInfo.serverId }
+      });
+      console.log(res);
     }
   }
 };

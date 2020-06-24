@@ -27,7 +27,12 @@ module.exports = appInfo => {
 
   // add your middleware config here
   config.middleware = [ 'pomeloCheck' ];
-  config.pomeloCheck = {};
+  config.pomeloCheck = {
+    enable: true,
+    ignore: [
+      '/getScript',
+    ],
+  };
 
   config.redis = {
     client: {
