@@ -41,6 +41,50 @@ monitorLog  get Log
 
 ![shell Icon](https://github.com/shudingbo/mypictures/blob/master/sex-pomelo-web/shell-icon.png?raw=true)
 
+## 配置
+### 前端
+发布后，更新 public 目录下 sexpCfg.js文件，更新 后端请求地址
+``` javascript
+window.sexpCfg = {
+  baseUrl: 'http://192.168.2.31:7050'   // 后端地址
+};
+```
+
+### 后端
+ 编辑 config/config.default.js
+``` javascript
+  // redis配置
+  config.redis = {
+    client: {
+      port: 6379,
+      host: '192.168.2.10',
+      password: null,
+      db: 3,
+    },
+  };
+
+  // 要管理的pomelo的 master 地址
+  config.pomelo = {
+    client: {
+      master: [{
+        alias: 'test-5',
+        host: '192.168.2.5',
+        port: 3005,
+        username: 'admin',
+        password: 'admin',
+      },
+      {
+        alias: 'sdb-32',
+        host: '192.168.2.32',
+        port: 3005,
+        username: 'admin',
+        password: 'admin',
+      },
+
+      ],
+    },
+  };
+```
 
 
 

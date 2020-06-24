@@ -27,8 +27,7 @@
     "test:unit": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint",
     "build:preview": "vue-cli-service build --mode preview",
-    "lint:nofix": "vue-cli-service lint --no-fix",
-    "postinstall": "opencollective-postinstall"
+    "lint:nofix": "vue-cli-service lint --no-fix"
   },
   "dependencies": {
     "@antv/data-set": "^0.10.2",

@@ -3,7 +3,7 @@ import {
 } from '@/store/mutation-types';
 
 export const globalCfg = {
-  baseUrl: 'http://127.0.0.1:7010',
+  baseUrl: 'http://192.168.2.31:7050',
   accessToken: ACCESS_TOKEN,
   group: {
     startFrontendAfter: false, // 启动时，最后启动前端服务器

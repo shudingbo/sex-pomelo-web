@@ -14,14 +14,12 @@
 </template>
 
 <script>
-import { NumberInfo } from '@/components';
 import { mixinDevice } from '@/utils/mixin';
 
 export default {
   name: 'Analysis',
   mixins: [mixinDevice],
   components: {
-    NumberInfo
   },
   data () {
     return {
