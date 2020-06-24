@@ -21,7 +21,7 @@ module.exports = appInfo => {
   config.keys = appInfo.name + '_1581052318117_4532';
   config.cluster = {
     listen: {
-      port: 7010,
+      port: 7050,
     },
   };
 
@@ -41,8 +41,15 @@ module.exports = appInfo => {
   config.pomelo = {
     client: {
       master: [{
-        alias: 'test-13',
-        host: '192.168.2.33',
+        alias: 'test-5',
+        host: '192.168.2.5',
+        port: 3005,
+        username: 'admin',
+        password: 'admin',
+      },
+      {
+        alias: 'sdb-32',
+        host: '192.168.2.32',
         port: 3005,
         username: 'admin',
         password: 'admin',

@@ -7,10 +7,10 @@ import App from './App.vue';
 import router from './router';
 import store from './store/';
 import { VueAxios } from './utils/request';
+import './core/use';
 import { setStore, getStore, clearStore, clearAll } from './utils/storage';
 
 import bootstrap from './core/bootstrap';
-import './core/lazy_use';
 import './permission'; // permission control
 import './utils/filter'; // global filter
 import filters from '@/filters/filter';

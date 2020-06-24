@@ -1,4 +1,5 @@
 <template>
+  <div>
   <a-popover
     v-model="runGroup.visable"
     placement="bottomRight"
@@ -29,6 +30,7 @@
       <a-icon type="bars" @click="runGroup.visable=!runGroup.visable" style="font-size: 16px; padding: 4px"/>
     </a-badge>
   </a-popover>
+  </div>
 </template>
 
 <script>

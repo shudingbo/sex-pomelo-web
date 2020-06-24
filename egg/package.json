@@ -7,17 +7,17 @@
     "declarations": true
   },
   "dependencies": {
-    "egg": "^2.15.1",
+    "egg": "^2.26.1",
     "egg-cors": "^2.2.3",
     "egg-pomelo": "^0.0.8",
     "egg-redis": "^2.4.0",
-    "egg-scripts": "^2.11.0"
+    "egg-scripts": "^2.13.0"
   },
   "devDependencies": {
     "autod": "^3.0.1",
     "autod-egg": "^1.1.0",
     "egg-bin": "^4.11.0",
-    "egg-ci": "^1.11.0",
+    "egg-ci": "^1.15.0",
     "egg-mock": "^3.21.0",
     "eslint": "^5.13.0",
     "eslint-config-egg": "^7.1.0"

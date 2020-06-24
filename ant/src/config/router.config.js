@@ -83,18 +83,18 @@ export const constantRouterMap = [
     ]
   },
 
-  {
-    path: '/test',
-    component: BlankLayout,
-    redirect: '/test/home',
-    children: [
-      {
-        path: 'home',
-        name: 'TestHome',
-        component: () => import('@/views/Home')
-      }
-    ]
-  },
+  // {
+  //   path: '/test',
+  //   component: BlankLayout,
+  //   redirect: '/test/home',
+  //   children: [
+  //     {
+  //       path: 'home',
+  //       name: 'TestHome',
+  //       component: () => import('@/views/Home')
+  //     }
+  //   ]
+  // },
 
   {
     path: '/404',

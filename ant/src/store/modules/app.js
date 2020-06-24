@@ -115,6 +115,12 @@ const app = {
     },
     ToggleMultiTab ({ commit }, bool) {
       commit('TOGGLE_MULTI_TAB', bool);
+    },
+    ToggleSearchBox ({ commit }, bool) {
+      commit('TOGGLE_MULTI_TAB', bool);
+    },
+    ToggleBreadcrumb ({ commit }, bool) {
+      commit('TOGGLE_MULTI_TAB', bool);
     }
   }
 };

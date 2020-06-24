@@ -59,7 +59,7 @@
     </a-modal>
     <a-modal :visible="dlgAddBatchVisable" title="Batch Add Server" @ok="addServerBatch"  @cancel="()=>{dlgAddBatchVisable=false}">
       <a-textarea v-model="txtBatchAdd" :autosize="{ minRows: 3,maxRows:20 }"
-        placeholder="cp servers.json in text"
+        placeholder="copy servers.json content here!"
       >
       </a-textarea>
     </a-modal>

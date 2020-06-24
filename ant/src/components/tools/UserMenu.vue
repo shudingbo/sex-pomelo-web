@@ -9,9 +9,11 @@
           <span>{{ nickname }}</span>
         </span>
         <a-menu slot="overlay" class="user-dropdown-menu-wrapper">
-          <a-menu-item key="2" disabled>
-            <a-icon type="setting"/>
-            <span>测试</span>
+          <a-menu-item key="2" >
+            <a href="javascript:;" @click="showSettingDrawer">
+              <a-icon type="bg-colors"/>
+              <span>主题设置</span>
+            </a>
           </a-menu-item>
           <a-menu-divider/>
           <a-menu-item key="3">
@@ -23,6 +25,11 @@
         </a-menu>
       </a-dropdown>
     </div>
+    <setting-drawer
+      @click="settingDrawerVisible = !settingDrawerVisible"
+      :settingDrawerVisible="settingDrawerVisible"
+      v-model="settingDrawerVisible"
+    ></setting-drawer>
   </div>
 </template>
 
@@ -30,12 +37,19 @@
 import NoticeIcon from '@/components/NoticeIcon';
 import BatchRun from '@/components/tools/BatchRun';
 import { mapActions, mapGetters } from 'vuex';
+import SettingDrawer from '@/components/SettingDrawer';
 
 export default {
   name: 'UserMenu',
   components: {
     NoticeIcon,
-    'sex-pomelo-batchrun': BatchRun
+    'sex-pomelo-batchrun': BatchRun,
+    SettingDrawer
+  },
+  data () {
+    return {
+      settingDrawerVisible: false
+    };
   },
   computed: {
     ...mapGetters(['nickname', 'avatar'])
@@ -62,6 +76,9 @@ export default {
         onCancel () {
         }
       });
+    },
+    showSettingDrawer () {
+      this.settingDrawerVisible = true;
     }
   }
 };

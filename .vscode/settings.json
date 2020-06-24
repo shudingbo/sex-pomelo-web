@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    "**/egg/logs": true,
+    "**/egg/run": true,
+    "**/egg/typings": true
+  },
+  "files.associations": {
+  
+  }
+}

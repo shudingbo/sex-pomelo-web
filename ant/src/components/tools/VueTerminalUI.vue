@@ -470,7 +470,7 @@ label {
 }
 
 section {
-  margin: 2rem 0;
+  margin: 0rem 0;
 }
 
 #input .cursor {

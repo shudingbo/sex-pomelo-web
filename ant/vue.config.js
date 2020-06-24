@@ -1,5 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
+const CompressionPlugin = require('compression-webpack-plugin');
+const productionGzipExtensions = ['js', 'css']; // 需要gzip压缩的文件后缀
 
 function resolve (dir) {
   return path.join(__dirname, dir);
@@ -21,11 +23,45 @@ module.exports = {
     }
   },
   */
-  configureWebpack: {
-    plugins: [
-      // Ignore all locale files of moment.js
-      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)
-    ]
+  configureWebpack: config => {
+    const myConfig = {};
+
+    if (process.env.NODE_ENV === 'production') {
+      myConfig.plugins = [
+        new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)
+      ];
+
+      myConfig.plugins.push(
+        new CompressionPlugin({
+          test: new RegExp('\\.(' + productionGzipExtensions.join('|') + ')$'),
+          threshold: 8192,
+          minRatio: 0.8
+        })
+      );
+
+      myConfig.optimization = {
+        minimize: true
+      };
+
+      // 警告 webpack 的性能提示
+      myConfig.performance = {
+        hints: 'warning',
+        // 入口起点的最大体积
+        maxEntrypointSize: 500000,
+        // 生成文件的最大体积
+        maxAssetSize: 500000,
+        // 只给出 js 文件的性能提示
+        assetFilter: function (assetFilename) {
+          return assetFilename.endsWith('.js');
+        }
+      };
+    } else { // development
+      myConfig.plugins = [
+        new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)
+      ];
+    }
+
+    return myConfig;
   },
 
   chainWebpack: (config) => {
@@ -66,6 +102,11 @@ module.exports = {
         name: 'assets/[name].[hash:8].[ext]'
       })
     */
+    if (process.env.use_analyzer) {
+      config
+        .plugin('webpack-bundle-analyzer')
+        .use(require('webpack-bundle-analyzer').BundleAnalyzerPlugin);
+    }
   },
 
   css: {
@@ -87,7 +128,7 @@ module.exports = {
 
   devServer: {
     // sockHost: 'localhost',
-    port: 8080, // 更改默认端口号
+    port: 8050, // 更改默认端口号
     proxy: {
       '/api': {
         // target: 'https://mock.ihx.me/mock/5baf3052f7da7e07e04a5116/antd-pro',
@@ -106,7 +147,9 @@ module.exports = {
     }
   },
 
+  productionSourceMap: false,
   lintOnSave: undefined,
   // babel-loader no-ignore node_modules/*
-  transpileDependencies: []
+  transpileDependencies: [],
+  parallel: require('os').cpus().length > 1
 };
